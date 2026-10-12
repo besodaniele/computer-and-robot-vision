@@ -15,8 +15,7 @@ The tiny hole (pinhole) in one wall of the room lets in a ray of light for each 
 )	
 
 The geometric model of the camera that we will adopt is the so-called pinhole or
-perspective model, which consists (refer to @fig:pinholeCamera) of the *image plane* $Q$ and the
-centre of projection (*Centre of Projection, COP*) $C$, located at a distance f (*focal length*) from the image plane.
+perspective model, which consists (refer to @fig:pinholeCamera) of the *image plane* $Q$ and the *centre of Projection (COP)* $C$, located at a distance f (*focal length*) from the image plane.
 #definition[principal axis][The line through $C$ orthogonal to $Q$ is the *principal axis* of the camera ]
 #definition[principal point][The intersection of the principal axis with $Q$ is called the *principal point* (or center of the image).]
 #definition[focal plane][The plane $F$ parallel to $Q$ and containing $C$ is called the *focal plane*.]
@@ -24,7 +23,7 @@ The points in $F$ are projected to infinity on $Q$.
 #figure(
 	image("../figures/1/pinholeCamera3.png",width: 80%),caption: [Pinhole camera with virtual image]
 )	<fig:pinholeCamera>
-Let $M$ be a point in the scene, of coordinates $(X, Y, Z)$, and let $M$ of coordinates $(X , Y , Z )$ be its projection onto the image plane through the pinhole $C$. If $f$ is the
+Let $M$ be a point in the scene, of coordinates $(X, Y, Z)$, and let $M'$ of coordinates $(X' , Y' , Z' )$ be its projection onto the image plane through the pinhole $C$. If $f$ is the
 distance of C from the image plane (focal length), then from the similitude of the triangles we get:
 $ (-X')/f = X/Z quad quad (-Y')/f = Y/Z $
 therefore 
@@ -43,7 +42,7 @@ Let us introduce the *camera reference frame*, a right-handed triplet $(X, Y, Z)
 	image("../figures/1/simplifiedModel.png",width: 80%),caption: [Simplified model of the camera with reference frames.
 	The point $M$ is projected onto the point $m $ where the line $C M$ intersects the image plane $Q$]
 )<fig:simplifiedPinhole>
-We also introduce a reference frame $(u, v)$ for the plane $Q$ centred at the principal point and with the axes $u$ and $v$ oriented as $X$ and $Y$ , respectively, as shown in @fig:simplifiedPinhole.
+We also introduce a *reference frame $(u, v)$* for the plane $Q$ centred at the principal point and with the axes $u$ and $v$ oriented as $X$ and $Y$ , respectively, as shown in @fig:simplifiedPinhole.
 #sidenote[Unless stated otherwise, we use \~ to denote Cartesian coordinates to distinguish them from homogeneous ones.]
 
 Now consider a point $M$ of coordinates $tilde(M)= vec(X,Y,Z)$ in 3D space and let $m$ of coordinates $tilde(m) = vec(u,v)$ be its projection onto $Q$ trough $C$.
@@ -55,7 +54,7 @@ But if we use homogeneous coordinates, the transformation becomes linear.
 Let $ m= vec(u,v,1) quad M=vec(X,Y,Z,1) $
 be the homogeneous coordinates of m and M, respectively.
 So the equation for perspective projection, in this simplified case, rewrites:
-$ Z vec(u,v,1)= z vec(-f X/Z, -f Y/Z, Z) = mat(-f, 0, 0,0; 0, -f,0,0; 0, 0, 1, 0) vec(X,Y,Z,1) $
+$ Z vec(u,v,1)= Z vec(-f X/Z, -f Y/Z, Z) = underbrace(mat(-f, 0, 0,0; 0, -f,0,0; 0, 0, 1, 0),P) vec(X,Y,Z,1) $
 In other words
 $ m=1/Z P M $
 The matrix $P$ represents the geometric model of the camera and is called *Perspective Projection Matrix (PPM)* or *camera matrix*.
@@ -68,13 +67,57 @@ into account:
 #figure(
 	image("../figures/1/generalPinhole.png",width: 80%),caption: [General model of the camera with reference frames. Note that the image plane should be viewed from the half-space opposite to C, so that the origin of the image reference is in the upper left corner of the image]
 )<fig:generalPinhole>
-==== Intrinsic parameters
-The transformation from the sensor coordinates to pixels is modelled by an affine transformation A that takes into account the translation of the origin at the upper left corner, the independent rescaling of the u and v axes for changing the unit of measurement from metres to pixels and the reversal of the direction of the axes:
+#figure(
+	image("../figures/1/principalPointTranslation.png"),caption: [Geometry of perspective projection: (a) the three coordinate frames involved and (b) the image coordinates of the principal point.]
+)
+=== Intrinsic parameters
+The transformation from the sensor coordinates to pixels is modelled by an affine transformation A that takes into account the *translation of the origin at the upper left corner*, the independent rescaling of the u and v axes for changing the unit of measurement from metres to pixels and the reversal of the direction of the axes:
 $ A = mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1) $
-where $(u_0 , v_0 )$ are the coordinates in pixels of the principal point and $k_u (k_v )$ (which is translated in respect to the center of the lens) is the inverse of the effective pixel size along the direction of the u (v) axis, measured in $m^(-1)$. 
-// TODO principal point in the book with two different coordinates for u and v, but in the slides with a single coordinate. Ask to the professor.
-The matrix $A$ transforms the coordinates from metres to pixels; hence, it pre-multiplies the PPM, which becomes:
+where $(u_0 , v_0 )$ are the coordinates in pixels of the principal point (which is not on the vertical axis!) and $k_u (k_v )$ (which is translated in respect to the center of the lens) is the inverse of the effective pixel size along the direction of the u (v) axis, measured in $m^(-1)$. 
 
+The matrix $A$ transforms the coordinates from metres to pixels; hence, it pre-multiplies the PPM (refer to @sec:rotoTranslation), which becomes:
+$ P = mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1) underbrace(mat(-f,0,0,0;0,f,0,0;0,0,1,0),"PPM")= mat(f k_u,0, u_0,0; 0, f k_v, v_0,0;0,0,1,0)= K mat(I_3,0)  $<eq:Pmatrix>
+where
+//TODO: domanda: se ho f uguale per entrambi gli assi, ma ho scaling diverso per i pixel, è come considerare due lunghezze focali diverse per i due assi?
+$ K = mat(f k_u,0, u_0; 0, f k_v, v_0;0,0,1) $ is called the *intrinsic parameters matrix* of the camera, while $mat(I_3,0)$ is the perspective transformation without parameters.
+It is obtained when the world reference frame coincides with the camera reference frame and the image points are expressed in normalized image coordinates, that is,
+$ q = K^(-1)m $
+#note[Note that whereas pixel coordinates are always measurable in the image, to step to normalized image coordinates the matrix of intrinsic parameters is needed.]
+#note[The multiplication by the PPM matrix calculates the projection of the point in the image plane, while the multiplication by matrix $A$ does the translation with respect to the principal point. The multiplication by the PPM matrix returns a $3 times 1$ matrix with the coordinates of the point in the image plane expressed in metres, while the multiplication by matrix $A$ returns a $3 times 1$ matrix with the coordinates of the point in pixels.]
+//TODO: riguardare nota su numero di parametri 
+A more general $K$ includes also the *skew* angle $Theta$ that corresponds to the angle between the $u$ and $v$ axes, that normally is $pi/2$:
+$
+K = mat(f k_u, (-f k_u)/tan(Theta), u_0; 0, (f k_v)/sin(Theta), v_0; 0, 0, 1)
+$<eq:intrinsics>
+This matrix has five degrees of freedom, which are the intrinsic parameters of the camera: $f k_u$, $f k_v$, $u_0$, $v_0$, and $Theta$.
+#note[The skew angle $Theta$ is usually very close to $pi/2$, so it is often neglected in practice.]
+//TODO: prof dice 11 gradi di libertà, ma il libro dice 5
+=== Extrinsic parameters
+To account for the fact that—in general—the world reference frame does not coincide with the camera reference frame, we must introduce a coordinate change consisting of a direct *isometry*,
+that is, a *rotation $R$* and a *translation $t$*.
+We denote by $M_c$ the homogeneous coordinates of a point in the
+camera coordinate system and $M$ the homogeneous coordinates of the same point in  the world coordinate system. We can therefore write:
+$ M_c = G M $
+where
+$ G= mat(R, t;0,1) $
+The matrix G encodes the *exterior orientation* (position and angular attitude #footnote[In navigation orientation is the determination of the east cardinal point (oriens in latin); by
+extension, in topography and photogrammetry, it indicates the determination of position and
+direction with respect to cardinal points or other reference frames.]) of the camera with respect to the world reference frame. Specifically, the rows of $R$ are the $X, Y$ and $Z$ axes of the camera reference frame expressed in the world coordinate system.
+
+By appropriately parameterising the rotation R, the exterior
+orientation of the camera is encoded by six *extrinsic parameters*: 
+- three Euler angles $omega,phi,kappa$ that specify the rotation 
+- three components $t_1 , t_2 , t_3$ for the translation.
+
+From @eq:Pmatrix and @eq:intrinsics we can write the general perspective projection matrix as:
+$ P = K[I_3,0] G $
+This is the most general form of the perspective projection matrix: 
+- $G$ encodes the exterior orientation of the camera
+- $K$ contains its intrinsic parameters (by analogy, we say that it encodes the interior orientation)
+- $[I_3,0]$ represents a perspective transformation from camera coordinates to normalised image coordinates.
+In total, the perspective projection matrix has *11 degrees of freedom*: 
+- 6 for the exterior orientation 
+- 5 for the interior orientation.
 === Thin lenses
 A pinhole camera is really small (in theory, infinitesimal) therefore the energy reaching the image plane also is. In order to obtain an image we would need a transformation rate which is, in theory, infinite and therefore impossible to obtain.
 If we simply increased the size in the hole we would not be able to control the amount of energy coming to the image plane, and would therefore obtain a spot instead of a point the image plane. If this were to occur, then the image would be blurry (*circle of confusion*).
@@ -107,8 +150,46 @@ The photosensitive elements have a small but finite size.
 Therefore, there is an interval of depths for which the points are in focus. This range is called *depth of field*, which is inversely proportional to the diameter of the lens; in fact, the pinhole camera has an infinite depth of field.
 The light that is collected, on the other hand, is directly proportional to the diameter of the lens.
 #remark[The focal length of the lens is a different notion from the focal length of the pinhole camera. Two different notations, $f$ and $D$, were used on purpose, although, unfortunately, the two quantities have the same name.]
+== Calibration
+We now address the problem of precisely and accurately determining the parameters of the pinhole model (intrinsic and extrinsic), a process that goes by the name of *calibration of the camera*.
+The idea of the resection methods for calibration is that by knowing the image projections of 3D points of known coordinates (*control points*), it should be possible to obtain the unknown parameters by solving the perspective projection equation.
+$K,R,T$ can ben obtained by applying the perspective projection equation to the control points and their projections in the image.
+=== Direct linear transform method (Tsai)
+Given the correspondences between n non-coplanar control points $M_i$ and their projections in the image $m_i$, it is required to compute a matrix $P$ such that:
+$ m_i approx P M_i quad i=1,dots,n $
+The image coordinates of the control points can be obtained manually or by classical image processing methods.
+To eliminate the scaling factor, we exploit the cross product, rewriting the previous equation as:
+$  m_i times P M_i = 0 $
+Skipping some algebraic manipulations, we can rewrite the previous equation as a linear system of equations in the unknowns $p_1 ,dots,p_{12}$, which are the entries of the matrix $P$. 
+Only 2 of the three equations are linearly independent.
+With $n$ points we obtain a system of $2n$ homogeneous linear equations, which we rewrite as $ A vec p = 0 $<eq:dltp> where $p$ is the vector of unknowns and $A$ is a $2n times 12$ matrix of coefficients, which depend on the coordinates of the control points.
+#note[In theory, then, six non-coplanar points are sufficient for the computation of P ; if any four of them are coplanar, the rank of A drops and the DLT algorithm fails.
+
+In practice, it is advisable to use all the available points (the more, the better) to
+compensate for the inevitable measurement errors.]
+We solve @eq:dltp with the least-squares method.
+
+=== Reprojection error
+THe reprojection error is the Euclidean distance (in pixels) between an observed image point and the corresponding 3D point reprojected onto the camera frame.
+This give us a quantitative measure of the accuracy of the calibration (ideally 0).
+#figure(
+	image("../figures/1/reprojection.png",width: 80%),caption: [Reprojection of a point.]
+)
+We can optimize the calibration by minimizing the reprojection error, which is a non-linear optimization problem, in which we also include the lens distortion parameters. This is usually done using an iterative method such as the Levenberg-Marquardt algorithm.
+== Zang's method
+This method is the state of the art of camera calibration, and is the most used in practice. It is based on the use of* multiple views of a planar calibration pattern*, which is easier to manufacture and use than a 3D calibration object.
+#figure(
+	image("../figures/1/zhangCalibration.png",width: 80%),caption: [Zhang's method for camera calibration. The calibration pattern is a planar checkerboard, which is easy to manufacture and use.]
+)
+First, we need to compute where are the corners of the checkerboard (purely image processing problem).
+This is done because there are many pixels on the corners of the boxed, by interpolating the corners we smooth out the noise.
+#figure(
+	image("../figures/1/ZhangBoard.png",width: 80%),caption: [Zhang's method for camera calibration. The corners of the checkerboard are detected in the image.]
+)
+Then we need to compute the *homography* between the checkerboard and the image plane, which is a linear problem.
+Since all the points are on the same plane, we can eliminate the depth $Z$ from the perspective projection equation, therefore the transformation becomes something different. We go from a point in a plane into a point in the image plane, which is a *homography*.
 == Sensing
-What differentiates a camera (in the modern sense of the world) from the portable camera obscura of the 17th century is its ability to record the pictures that form on its backplane.
+What differentiates a camera (in the modern sense of the word) from the portable camera obscura of the 17th century is its ability to record the pictures that form on its backplane.
 We now introduce two different kinds of modern camera sensors.
 === CCD sensors
 *Charge-coupled-device (CCD)* cameras that were proposed in 1970.
@@ -145,6 +226,9 @@ When photons hit the CMOS sensor, they are absorbed by the photodiodes within ea
 After the charge is converted to voltage at the pixel level, the signal is amplified to make it strong enough for further processing. This amplification occurs within the same pixel, minimizing the distance the signal has to travel, which reduces noise and improves image quality. In many CMOS sensors, the analog voltage signals are converted to digital signals at the column or even the pixel level by an integrated ADC. This localized conversion is one of the reasons CMOS sensors can achieve high-speed readouts.
 
 One characteristic of many CMOS sensors is the *rolling shutter* effect. Because each row or column of pixels is read out sequentially rather than all at once, moving objects can appear distorted. For example, a fast-moving car might look skewed because different parts of the image are captured at slightly different times. However, advanced CMOS sensors can mitigate this effect, and some even employ a *global shutter* to capture all pixels simultaneously, similar to CCD sensors.
+#figure(
+	image("../figures/1/rollingGlobalShutter.png"),caption: [Rolling and global shutter example of the same image.]
+)
 #note[Optimally we want a global shutter with an exposure time that doesn't lead to motion blur. ]
 === Sensor models
 For simplicity, we restrict our attention in this section to black-and-white CCD cameras: Color cameras can be treated in a similar fashion by considering each color channel separately and taking the effect of the associated filter response explicitly into account.
@@ -168,7 +252,7 @@ Of course, we ideally want it to be linear.
 == Digital images
 Here we introduce digital images and some operations that can be done on them.
 === HDR
-According to exposure time, length of exposure time and the scene itself some areas of the image can be overexposed, underexposed, or correctly. We want to obtain an image in which all areas are properly exposed. This is called *High Dynamic Range (HDR)* imaging.
+According to exposure time, length of exposure time and the scene itself some areas of the image can be overexposed, underexposed, or correctly exposed. We want to obtain an image in which all areas are properly exposed. This is called *High Dynamic Range (HDR)* imaging.
 Of course, the approach changes whether the image is static or dynamic.
 #figure(
 	image("../figures/1/exposure.png",width: 80%),caption: [pictures taken with different exposure times of the same scene]
@@ -257,8 +341,7 @@ We can also discriminate between radial and tangential distortion. Radial distor
 #figure(
 	image("../figures/1/Definitions-of-radial-tangential-distortion-on-the-2-D-plane-3038096262.png",width: 80%),caption: [Definitions of radial and tangential distortion on the 2-D plane]
 )
-Note that both radial and tangential are a *function of the radius*, that is the distance from the optical axis. Therefore, they are both zero at the optical axis and increase with distance from it. 
-// TODO ask clarification of center of image plane and optical axis to the professor
+Note that both radial and tangential are a *function of the radius*, that is the distance from the optical axis (principal point). Therefore, they are both zero at the optical axis and increase with distance from it. 
 ==== Chromatic aberration
 Chromatic aberration is a type of distortion in which there is a failure of a lens to focus all colors to the same convergence point. It occurs because lenses have different refractive indices for different wavelengths of light, causing them to bend light of different colors by different amounts. This results in a misalignment of colors in the image, leading to color fringing around the edges of objects, especially in high-contrast areas. Chromatic aberration can be minimized by using achromatic lenses, which are designed to bring two wavelengths (typically red and blue) into focus in the same plane, or by using apochromatic lenses, which bring three wavelengths into focus in the same plane.
 #figure(
