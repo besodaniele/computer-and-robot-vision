@@ -1,4 +1,5 @@
 #import "@preview/scholia:0.1.0": *
+#import "@preview/pavemat:0.2.0": pavemat
 A camera is the union of the sensors and the software that uses the image to determine relevant points in the image plane and  the projection model.
 This allows to calculate the lines connecting the points in the image plane and the object.
 #note[A camera sensor (once calibrated) does not measure points in the image, but measures lines in the space (a subset of the star of lines passing trough the pinhole).]
@@ -76,7 +77,7 @@ $ A = mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1) $
 where $(u_0 , v_0 )$ are the coordinates in pixels of the principal point (which is not on the vertical axis!) and $k_u (k_v )$ (which is translated in respect to the center of the lens) is the inverse of the effective pixel size along the direction of the u (v) axis, measured in $m^(-1)$. 
 
 The matrix $A$ transforms the coordinates from metres to pixels; hence, it pre-multiplies the PPM (refer to @sec:rotoTranslation), which becomes:
-$ P = mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1) underbrace(mat(-f,0,0,0;0,f,0,0;0,0,1,0),"PPM")= mat(f k_u,0, u_0,0; 0, f k_v, v_0,0;0,0,1,0)= K mat(I_3,0)  $<eq:Pmatrix>
+$ P = underbrace(mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1),A) underbrace(mat(-f,0,0,0;0,f,0,0;0,0,1,0),"PPM")= mat(f k_u,0, u_0,0; 0, f k_v, v_0,0;0,0,1,0)= K mat(I_3,0)  $<eq:Pmatrix>
 where
 //TODO: domanda: se ho f uguale per entrambi gli assi, ma ho scaling diverso per i pixel, è come considerare due lunghezze focali diverse per i due assi?
 $ K = mat(f k_u,0, u_0; 0, f k_v, v_0;0,0,1) $ is called the *intrinsic parameters matrix* of the camera, while $mat(I_3,0)$ is the perspective transformation without parameters.
@@ -118,6 +119,16 @@ This is the most general form of the perspective projection matrix:
 In total, the perspective projection matrix has *11 degrees of freedom*: 
 - 6 for the exterior orientation 
 - 5 for the interior orientation.
+=== Summarization of point translation
+Here we summarize the coordinate systems introduced and their relationship.
+#figure(
+	image("../figures/1/summary.png"),caption:[Coordinate systems involved in camera modelling]
+)
+- *World coordinates*: generic coordinates that represent points in 3D, $tilde(M)=vec(X,Y,Z)$
+- *Camera coordinates*: coordinates of the 3D points in a reference frame with origin in the COP and integral with the camera.
+They will often be referred to with the same notation as the world coordinates $tilde(M)=vec(X,Y,Z)$, when needed to be distinguished we use $tilde(M)_c$.
+- *Normalised image coordinates*: are measured in metres with origin at the principal point and denoted by $ tilde(q) = vec(x, y)$.
+- *Image coordinates*: are measured in pixels with origin in the upper left corner of the image and denoted by $m = vec(u, v)$.
 === Thin lenses
 A pinhole camera is really small (in theory, infinitesimal) therefore the energy reaching the image plane also is. In order to obtain an image we would need a transformation rate which is, in theory, infinite and therefore impossible to obtain.
 If we simply increased the size in the hole we would not be able to control the amount of energy coming to the image plane, and would therefore obtain a spot instead of a point the image plane. If this were to occur, then the image would be blurry (*circle of confusion*).
@@ -155,28 +166,133 @@ We now address the problem of precisely and accurately determining the parameter
 The idea of the resection methods for calibration is that by knowing the image projections of 3D points of known coordinates (*control points*), it should be possible to obtain the unknown parameters by solving the perspective projection equation.
 $K,R,T$ can ben obtained by applying the perspective projection equation to the control points and their projections in the image.
 === Direct linear transform method (Tsai)
-Given the correspondences between n non-coplanar control points $M_i$ and their projections in the image $m_i$, it is required to compute a matrix $P$ such that:
-$ m_i approx P M_i quad i=1,dots,n $
-The image coordinates of the control points can be obtained manually or by classical image processing methods.
-To eliminate the scaling factor, we exploit the cross product, rewriting the previous equation as:
-$  m_i times P M_i = 0 $
-Skipping some algebraic manipulations, we can rewrite the previous equation as a linear system of equations in the unknowns $p_1 ,dots,p_{12}$, which are the entries of the matrix $P$. 
-Only 2 of the three equations are linearly independent.
-With $n$ points we obtain a system of $2n$ homogeneous linear equations, which we rewrite as $ A vec p = 0 $<eq:dltp> where $p$ is the vector of unknowns and $A$ is a $2n times 12$ matrix of coefficients, which depend on the coordinates of the control points.
-#note[In theory, then, six non-coplanar points are sufficient for the computation of P ; if any four of them are coplanar, the rank of A drops and the DLT algorithm fails.
+Given the correspondences between n non-coplanar control points  and their projections in the image, we compute the perspective projection matrix $P$.
+The image coordinates of the control points can be obtained manually or by classical image processing methods. From matrix P, we can obtain the intrinsic and extrinsic parameters of the camera by means of a matrix factorization.
+In order to make the transformation linear, we use homogeneous coordinates for the points in the scene and their projections in the image.
+
+Given a point $X$ in space, $underbrace(q',x times 1)= underbrace(P,3 times 4) space underbrace(X,4 times 1)$ is its projection, where $P = underbrace(K,3 times 3) space underbrace(R,3 times 3) underbrace([I_3 | X_0], 3 times 4 )$.
+
+- $K = mat(f_x, s,c_x;0,f_y,c_y;0,0,1)$ is the matrix of intrinsic parameters (*5 parameters*), where:
+	- $f_x$ and $f_y$ are the focal lengths in the x and y directions, respectively.
+	- $c_x$ and $c_y$ are the coordinates of the principal point.
+	- $s$ is the skew coefficient.
+- $R$ is the rotation matrix (*3 parameters*).
+- $X_0$ is the translation vector (*3 parameters*).
+
+We know show how to estimate the matrix $P$, then how to get $K$, $R$, and $X_0$ from $P$.
+
+From each control point we obtain two equations since:
+$ vec(u',v',w')=P vec(U,V,W,T) $
+But we can normalize the homogeneous coordinates, we obtain:
+$ vec(u'\/w',v'\/w',1)=P vec(U\/T,V\/T,W \/ T,1) $
+therefore:
+
+#note[In theory, then, six non-coplanar points are sufficient for the computation of P ; if any four of them are coplanar, the rank of the matrix drops and the DLT algorithm fails.
 
 In practice, it is advisable to use all the available points (the more, the better) to
 compensate for the inevitable measurement errors.]
-We solve @eq:dltp with the least-squares method.
+==== Projection matrix estimation
+We know need to estimate the 11 parameters of $P$, given the 3D coordinates of $X_i$ with $i in I,|I| >= 6$ control points, and the observed image coordinates $q_i$ of their projections produced by the uncalibrated camera, $q_i=P X_i, forall i in I$.
+$ q_i = P X_i = mat(p_11,p_12,p_13,p_14;p_21,p_22,p_23,p_24;p_31,p_32,p_33,p_34) X_i = vec(A^T,B^T,C^T) X_i $ 
+$ q_i = P X_i = 
+  lr([
+    #table(
+      columns: 4,
+      row-gutter: 2pt, // Creates the gap between the colored boxes
+      align: center + horizon,
+      // Color each row based on its 'y' index (0=blue, 1=red, 2=orange)
+      stroke: (x, y) => {
+        let c = (blue, red, orange).at(y, default: none)
+        (
+          top: c, 
+          bottom: c, 
+          left: if x == 0 { c } else { none },
+          right: if x == 3 { c } else { none }
+        )
+      },
+      $p_11$, $p_12$, $p_13$, $p_14$,
+      $p_21$, $p_22$, $p_23$, $p_24$,
+      $p_31$, $p_32$, $p_33$, $p_34$
+    )
+  ])
+  X_i = 
+  lr([
+    #table(
+      columns: 1,
+      row-gutter: 2pt,
+      align: center + horizon,
+      // Since this matrix is only 1 column wide, all sides get the stroke automatically
+      stroke: (x, y) => (blue, red, orange).at(y, default: none),
+      $A^top$, 
+      $B^top$, 
+      $C^top$
+    )
+  ])
+  X_i
+$
+in other words
+$ vec(x_i,y_i,1) = vec(u_i,v_i,w_i)= vec(A^T X_i,B^T X_i,C^T X_i) $
+finally:
+$ x_i=u_i/w_i = (A^T X_i)/ (C^T X_i) quad arrow quad x_i C^T X_i -A^T X_i = 0 $ 
+$ y_i=v_i/w_i = (B^T X_i)/ (C^T X_i) quad arrow quad y_i C^T X_i -B^T X_i = 0 $
+Furthermore, we can rewrite them in order to have the equations with the same variables on the left side:
+$ x_i X_i^T C - X_i^T A = 0 quad arrow quad -X_i^T A  + 0B + x_i X_i^T C = 0 $
+$ y_i X_i^T C - X_i^T B = 0 quad arrow quad + 0A -X_i^T B  + y_i X_i^T C = 0 $
+Up until now we had $P = vec(A^T,B^T,C^T)$, $P in RR^(3 times 4) $, we rewrite the parameters as a vector $p=vec(A,B,C)=vec (P^T), p in RR^(12 times 1)$.
 
+The previous equations are now expressible in a more compact form
+$a^T_(x_i) p = 0 $ and $ a^T_(y_i) p = 0$
+,where
+$a_(x_i)^T = (-X_i^T, 0, x_i X_i^T) $ and $a_(y_i)^T = (0, -X_i^T, y_i X_i^T)$.
+
+Finally, we can collapse the points in a single matrix multiplication:
+$ M = vec(a^T_(x_1), a^T_(y_1), dots.v, a^T_(x_n), a^T_(y_n)) arrow M p = 0 $
+In the real world, we will never have $M P = 0$, instead we will have $M P = omega$, therefore we need to find the vector $p$ that minimizes the error $||M p||^2_F=Omega=omega^T omega=p^T M^T M p$.
+We also want a $p$ such that $||p||=1$, this is to avoid the trivial solution $p=0$ (which is not useful) and we also fix the scale of the solution by a scalar.
+===== Least square method
+We want to find $hat(p)= "argmin"_p ||M p||^2_F$ subject to $||p||=1$. This is an algebraic optimization problem, not directly related to geometric entities. We solve it by the *least square method*.
+Solving a problem of the form $A x=0$ with a square matrix $A$ is equivalent to look for the null space of $A$ with $||x||^2=1,(x  eq.not 0 )$.
+The eigenvector that corresponds to the smallest eigenvalue of $𝐴$ solves the linear system of equations.
+
+We perform the SVD (Singular Value Decomposition) of $M$:
+$ M = U S V^T = sum_(i=1)^12 s_i u_i v_i^T $
+where 
+$ U^T U = I_12 quad V^T V = I_12 quad S= "diag"(s_1, s_2, ..., s_12) "with" s_1 >= s_2 >= ... >= s_12 $
+The last column of $V$ is the eigenvector corresponding to the smallest eigenvalue of $M^T M$, and therefore it is the solution of our problem, $p = v_12.$ From p we can reconstruct the matrix $P$ and then we can extract the intrinsic and extrinsic parameters of the camera.
+===== Conditions for a solution
+- We assume there are no random or gross measurement errors in the image coordinates of the control points. 
+- $M$ has rank 11 then, at least 6 control points are needed.
+There is no solution if :
+- All the control points are sampled on a plane (no 3D information).
+- All the control points and the projection center are
+located on a twisted cubic curve (not very likely).
+==== Parameter extraction
+
+Now that we have P, we can compute $X_0,K "and" R$.
+$ P = K R [I_3 | -X_0] = [underbrace(H_infinity,3 times 3)|underbrace(h,3 times 1)] $ 
+We split $P$ by dividing its first 3 columns from the last one.
+$ H_infinity = K R quad h= -K R X_0 $
+Where $K$ is an upper triangular matrix and $R$ is a rotation matrix.
+$R^{-1}$ also is a rotation matrix, and $K^-1$ is also an upper triangular matrix.
+
+Once we have $K$ and $R$, we can easily compute $X_0$ by inverting the equation $h= -K R X_0$.
+$ X_0 = -H_infinity^(-1) h = R^(-1)K^(-1)K R X_0  $
+But first, we need to find $K$ and $R$. This can be done by using the *QR decomposition* of $H_infinity$.
+#definition[QR decomposition][The QR decomposition of a square matrix $M$ is a decomposition of the form $M=Q R$, where $Q$ is an rotation matrix and $R$ is a triangular matrix.]
+#note[This decomposition always exists, but it can be not unique.]
+$ H = Q R arrow  H^(-1)_infinity = R^(-1) K^(-1) $
+where:
+- $R^(-1)$ is the rotation matrix
+- $K^(-1)$ is the triangular matrix
+these matrixes are obtained by doing the $Q R$ decomposition of $H^(-1)_infinity$. We then obtain $K$ and $R$ by inverting $K^(-1)$ and $R^(-1)$, then we normalize $K$ by dividing it by $k_33$ to have $k_33=1$.
 === Reprojection error
-THe reprojection error is the Euclidean distance (in pixels) between an observed image point and the corresponding 3D point reprojected onto the camera frame.
+The reprojection error is the Euclidean distance (in pixels) between an observed image point and the corresponding 3D point reprojected onto the camera frame.
 This give us a quantitative measure of the accuracy of the calibration (ideally 0).
 #figure(
 	image("../figures/1/reprojection.png",width: 80%),caption: [Reprojection of a point.]
 )
 We can optimize the calibration by minimizing the reprojection error, which is a non-linear optimization problem, in which we also include the lens distortion parameters. This is usually done using an iterative method such as the Levenberg-Marquardt algorithm.
-== Zang's method
+=== Zang's method
 This method is the state of the art of camera calibration, and is the most used in practice. It is based on the use of* multiple views of a planar calibration pattern*, which is easier to manufacture and use than a 3D calibration object.
 #figure(
 	image("../figures/1/zhangCalibration.png",width: 80%),caption: [Zhang's method for camera calibration. The calibration pattern is a planar checkerboard, which is easy to manufacture and use.]
@@ -188,6 +304,33 @@ This is done because there are many pixels on the corners of the boxed, by inter
 )
 Then we need to compute the *homography* between the checkerboard and the image plane, which is a linear problem.
 Since all the points are on the same plane, we can eliminate the depth $Z$ from the perspective projection equation, therefore the transformation becomes something different. We go from a point in a plane into a point in the image plane, which is a *homography*.
+=== Camera localization
+This is the problem of determining the pose of a camera (position and orientation) with respect to the world frame, from a set of 3D-2D point correspondences. This is also known as the *Perspective-n-Point (PnP)* problem.
+We assume the camera is already calibrated, therefore we know the intrinsic parameters.
+We can use DLT to solve this, but it's suboptimal, we want to find an algebraic solution to the problem.
+With n=3 points we can solve the problem algebraically, but there are up to 4 solutions, and we need to choose the one that is physically possible (the one in front of the camera).
+With n=4 points we can solve the problem algebraically, and there is a unique solution.
+=== Robustness to outliers (RANSAC)
+In real calibration data, not all detected correspondences are correct. Corner detection can fail, some points can be mismatched, and image noise can perturb localization. These wrong correspondences are called *outliers*.
+
+Classical least-squares estimation (DLT, homography fitting, PnP fitting) is very sensitive to outliers: even a small number of wrong points can significantly bias the estimated parameters.
+
+*RANSAC* (Random Sample Consensus) is used to make estimation robust:
+- Randomly select a minimal subset of correspondences (e.g., the minimum needed to estimate the model).
+- Estimate the model parameters from this subset.
+- Compute the reprojection error for all correspondences.
+- Count how many points are *inliers*, i.e., points with error below a threshold.
+- Repeat many times and keep the model with the largest inlier set.
+- Re-estimate the final model using all inliers only.
+
+Why we need it in camera calibration:
+- It removes the influence of bad checkerboard corner detections or wrong matches.
+- It provides a reliable initialization for non-linear refinement (e.g., Levenberg--Marquardt).
+- It improves stability of estimated intrinsics/extrinsics, especially with many images and automatic feature extraction.
+
+#note[RANSAC does not replace optimization: it first identifies a geometrically consistent inlier set, then a final least-squares/non-linear optimization is performed on those inliers.]
+
+
 == Sensing
 What differentiates a camera (in the modern sense of the word) from the portable camera obscura of the 17th century is its ability to record the pictures that form on its backplane.
 We now introduce two different kinds of modern camera sensors.
@@ -302,10 +445,32 @@ Alternatively, in addition to the color channels, the camera can output a 3D poi
 === Time-of-flight cameras
 We will focus on time-of-flight (ToF) cameras, which are a type of 3D camera that measures the distance to objects in the scene by calculating the time it takes for a signal to travel from the camera to the object and back. ToF cameras *emit a signal* and measure the time it takes for the signal to return after reflecting off objects in the scene. This time measurement is then used to calculate the distance to each point in the scene, creating a depth map.
 #note[Light is fast, too fast...]
+/*
 Doing a TOF camera with light is possible, but it is very expensive (LIDAR).
 Some other devices work thanks to amplitude modulation, where the emitter emits a modulated signal, and the sensor measures the phase shift of the returning signal. This phase shift is proportional to the distance to the object, allowing for depth calculation.
 This type of calculation is really cheap and can be done by standard hardware.
 This approach also gives me control over the frequency of the signal that is emitted.
+*/
+
+
+This time can be measured in two ways: directly as $Delta t$
+or indirectly after conversion to a phase delay $Delta phi$ through amplitude modulation.
+
+In the first case, also called pulsed wave (PW) LiDAR, the laser source emits a
+pulse, the receiver records the instant of time when it returns after being reflected
+by the target and compute the TOF $Delta t$.
+A simple calculation allows to recover the distance: $r = (c Delta t) / 2$ where c indicates the speed of light.
+
+The depth resolution of the sensor is related to its ability to measure
+extremely small timescales. Light travels 1 mm in $3.3 p s$, and it is difficult to
+measure intervals smaller than $5–10 p s$.
+
+To obtain a more versatile sensor, a continuous wave (CW) is emitted instead of a pulse; this is an amplitude-modulated radiation with a sine wave, and the phase of the reflected signal is measured. 
+
+What we described so far is a laser range finder, a sensor that emits a single
+beam and therefore obtains distance measurements of only one point in the scene at
+a time. A laser scanner, instead, uses a beam of laser light to scan the scene in order
+to derive the distance to all visible points.
 == Defects in images
 Here we introduce some defects that can be present in images.
 Defects can be caused by the sensor, the lens, or the environment.  
