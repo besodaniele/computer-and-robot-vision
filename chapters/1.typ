@@ -179,7 +179,7 @@ Given a point $X$ in space, $underbrace(q',x times 1)= underbrace(P,3 times 4) s
 - $R$ is the rotation matrix (*3 parameters*).
 - $X_0$ is the translation vector (*3 parameters*).
 
-We know show how to estimate the matrix $P$, then how to get $K$, $R$, and $X_0$ from $P$.
+We need to estimate the matrix $P$, then get $K$, $R$, and $X_0$ from $P$.
 
 From each control point we obtain two equations since:
 $ vec(u',v',w')=P vec(U,V,W,T) $
