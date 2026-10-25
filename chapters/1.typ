@@ -186,7 +186,10 @@ $ vec(u',v',w')=P vec(U,V,W,T) $
 But we can normalize the homogeneous coordinates, we obtain:
 $ vec(u'\/w',v'\/w',1)=P vec(U\/T,V\/T,W \/ T,1) $
 therefore:
-
+$ vec(x',y',1) = P vec(X,Y,Z,1) $
+we obtain 2 equations for each control point
+$ x' = (p_11 X + p_12 Y + p_13 Z + p_14)/ (p_31 X + p_32 Y + p_33 Z + p_34)   quad quad y' = (p_21 X + p_22 Y + p_23 Z + p_24)/ (p_31 X + p_32 Y + p_33 Z + p_34)   $
+from which we have to estimate the 11 parameters of $P$.
 #note[In theory, then, six non-coplanar points are sufficient for the computation of P ; if any four of them are coplanar, the rank of the matrix drops and the DLT algorithm fails.
 
 In practice, it is advisable to use all the available points (the more, the better) to
