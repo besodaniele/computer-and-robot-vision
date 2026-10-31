@@ -79,20 +79,17 @@ where $(u_0 , v_0 )$ are the coordinates in pixels of the principal point (which
 The matrix $A$ transforms the coordinates from metres to pixels; hence, it pre-multiplies the PPM (refer to @sec:rotoTranslation), which becomes:
 $ P = underbrace(mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1),A) underbrace(mat(-f,0,0,0;0,f,0,0;0,0,1,0),"PPM")= mat(f k_u,0, u_0,0; 0, f k_v, v_0,0;0,0,1,0)= K mat(I_3,0)  $<eq:Pmatrix>
 where
-//TODO: domanda: se ho f uguale per entrambi gli assi, ma ho scaling diverso per i pixel, è come considerare due lunghezze focali diverse per i due assi?
 $ K = mat(f k_u,0, u_0; 0, f k_v, v_0;0,0,1) $ is called the *intrinsic parameters matrix* of the camera, while $mat(I_3,0)$ is the perspective transformation without parameters.
 It is obtained when the world reference frame coincides with the camera reference frame and the image points are expressed in normalized image coordinates, that is,
 $ q = K^(-1)m $
 #note[Note that whereas pixel coordinates are always measurable in the image, to step to normalized image coordinates the matrix of intrinsic parameters is needed.]
 #note[The multiplication by the PPM matrix calculates the projection of the point in the image plane, while the multiplication by matrix $A$ does the translation with respect to the principal point. The multiplication by the PPM matrix returns a $3 times 1$ matrix with the coordinates of the point in the image plane expressed in metres, while the multiplication by matrix $A$ returns a $3 times 1$ matrix with the coordinates of the point in pixels.]
-//TODO: riguardare nota su numero di parametri 
 A more general $K$ includes also the *skew* angle $Theta$ that corresponds to the angle between the $u$ and $v$ axes, that normally is $pi/2$:
 $
 K = mat(f k_u, (-f k_u)/tan(Theta), u_0; 0, (f k_v)/sin(Theta), v_0; 0, 0, 1)
 $<eq:intrinsics>
 This matrix has five degrees of freedom, which are the intrinsic parameters of the camera: $f k_u$, $f k_v$, $u_0$, $v_0$, and $Theta$.
 #note[The skew angle $Theta$ is usually very close to $pi/2$, so it is often neglected in practice.]
-//TODO: prof dice 11 gradi di libertà, ma il libro dice 5
 === Extrinsic parameters
 To account for the fact that—in general—the world reference frame does not coincide with the camera reference frame, we must introduce a coordinate change consisting of a direct *isometry*,
 that is, a *rotation $R$* and a *translation $t$*.
@@ -196,8 +193,7 @@ In practice, it is advisable to use all the available points (the more, the bett
 compensate for the inevitable measurement errors.]
 ==== Projection matrix estimation
 We know need to estimate the 11 parameters of $P$, given the 3D coordinates of $X_i$ with $i in I,|I| >= 6$ control points, and the observed image coordinates $q_i$ of their projections produced by the uncalibrated camera, $q_i=P X_i, forall i in I$.
-$ q_i = P X_i = mat(p_11,p_12,p_13,p_14;p_21,p_22,p_23,p_24;p_31,p_32,p_33,p_34) X_i = vec(A^T,B^T,C^T) X_i $ 
-$ q_i = P X_i = 
+$ q_i = P X_i = mat(p_11,p_12,p_13,p_14;p_21,p_22,p_23,p_24;p_31,p_32,p_33,p_34) X_i = vec(A^T,B^T,C^T) X_i \ q_i = P X_i = 
   lr([
     #table(
       columns: 4,
@@ -236,11 +232,9 @@ $
 in other words
 $ vec(x_i,y_i,1) = vec(u_i,v_i,w_i)= vec(A^T X_i,B^T X_i,C^T X_i) $
 finally:
-$ x_i=u_i/w_i = (A^T X_i)/ (C^T X_i) quad arrow quad x_i C^T X_i -A^T X_i = 0 $ 
-$ y_i=v_i/w_i = (B^T X_i)/ (C^T X_i) quad arrow quad y_i C^T X_i -B^T X_i = 0 $
+$ x_i=u_i/w_i = (A^T X_i)/ (C^T X_i) quad arrow quad x_i C^T X_i -A^T X_i = 0 \ y_i=v_i/w_i = (B^T X_i)/ (C^T X_i) quad arrow quad y_i C^T X_i -B^T X_i = 0 $
 Furthermore, we can rewrite them in order to have the equations with the same variables on the left side:
-$ x_i X_i^T C - X_i^T A = 0 quad arrow quad -X_i^T A  + 0B + x_i X_i^T C = 0 $
-$ y_i X_i^T C - X_i^T B = 0 quad arrow quad + 0A -X_i^T B  + y_i X_i^T C = 0 $
+$ x_i X_i^T C - X_i^T A = 0 quad arrow quad -X_i^T A  + 0B + x_i X_i^T C = 0 \ y_i X_i^T C - X_i^T B = 0 quad arrow quad + 0A -X_i^T B  + y_i X_i^T C = 0 $
 Up until now we had $P = vec(A^T,B^T,C^T)$, $P in RR^(3 times 4) $, we rewrite the parameters as a vector $p=vec(A,B,C)=vec (P^T), p in RR^(12 times 1)$.
 
 The previous equations are now expressible in a more compact form
@@ -276,7 +270,7 @@ $ P = K R [I_3 | -X_0] = [underbrace(H_infinity,3 times 3)|underbrace(h,3 times 
 We split $P$ by dividing its first 3 columns from the last one.
 $ H_infinity = K R quad h= -K R X_0 $
 Where $K$ is an upper triangular matrix and $R$ is a rotation matrix.
-$R^{-1}$ also is a rotation matrix, and $K^-1$ is also an upper triangular matrix.
+$R^(-1)$ also is a rotation matrix, and $K^(-1)$ is also an upper triangular matrix.
 
 Once we have $K$ and $R$, we can easily compute $X_0$ by inverting the equation $h= -K R X_0$.
 $ X_0 = -H_infinity^(-1) h = R^(-1)K^(-1)K R X_0  $
@@ -295,7 +289,7 @@ This give us a quantitative measure of the accuracy of the calibration (ideally 
 	image("../figures/1/reprojection.png",width: 80%),caption: [Reprojection of a point.]
 )
 We can optimize the calibration by minimizing the reprojection error, which is a non-linear optimization problem, in which we also include the lens distortion parameters. This is usually done using an iterative method such as the Levenberg-Marquardt algorithm.
-=== Zang's method
+=== Zhang's method
 This method is the state of the art of camera calibration, and is the most used in practice. It is based on the use of* multiple views of a planar calibration pattern*, which is easier to manufacture and use than a 3D calibration object.
 #figure(
 	image("../figures/1/zhangCalibration.png",width: 80%),caption: [Zhang's method for camera calibration. The calibration pattern is a planar checkerboard, which is easy to manufacture and use.]
@@ -305,8 +299,85 @@ This is done because there are many pixels on the corners of the boxed, by inter
 #figure(
 	image("../figures/1/ZhangBoard.png",width: 80%),caption: [Zhang's method for camera calibration. The corners of the checkerboard are detected in the image.]
 )
-Then we need to compute the *homography* between the checkerboard and the image plane, which is a linear problem.
-Since all the points are on the same plane, we can eliminate the depth $Z$ from the perspective projection equation, therefore the transformation becomes something different. We go from a point in a plane into a point in the image plane, which is a *homography*.
+This method only calculates the intrinsic parameters of the camera.
+$ underbrace(x,3 times 1 \ "pixel" \ " coordinate") = underbrace(P,3 times 4 \ "projection" \ "matrix") underbrace(X,4 times 1 \ "world" \ " coordinate") = K R [I_3| X_0] X $
+==== Checkerboard trick
+
+Since we are observing a checkerboard, we know the size and structure of the pattern.
+
+We set the world coordinate system to a specific corner of the checkerboard
+#remark[The origin point must lie on the inside of the outer layer of the checkerboard, this is because it avoids the outer white checks where there is no edge.]
+Since all these points lie on the same plane, in which we take as the origin the corner of a check and the $X$ and $Y$ axis along the edges of such check, then all point have $Z=0$ as a coordinate. 
+Then, the equation becomes
+$ overbracket(vec(x,y,1),X) = overbracket(mat(c,c s, x_H ; 0 , c(1+m), y_H ; 0,0,1 ),K) 
+mat(r_11,r_12,cancel(r_13,cross:#true,stroke:#(paint:red)), t_1;
+r_21,r_22,cancel(r_23,cross:#true,stroke:#(paint:red)), t_2;
+r_31,r_32,cancel(r_33,cross:#true,stroke:#(paint:red)), t_3;
+) overbracket(vec(X,Y,cancel(Z,cross:#true,stroke:#(paint:red)),1),X) \ 
+vec(x,y,1) = mat(c,c s, x_H ; 0 , c(1+m), y_H ; 0,0,1 ) 
+mat(r_11,r_12, t_1;
+r_21,r_22, t_2;
+r_31,r_32, t_3;
+) vec(X,Y,1)
+$
+
+One point generates such equation.
+#note[This is not the general equation of the projection of a point, it works in this *specific* case.]
+We say that $H = mat(h_1,h_2,h_3)= K mat(r_1,r_2,t)$, then for multiple observed points on the checkerboard *from the same image* we have that $vec(x_i,y_i,1)= H vec(X_i,Y_i,1) quad i=1,...,I$.
+
+Then, we can use the same approach to solve the system as in DLT
+
+$ a^T_(x_i) h = 0 \
+	a^T_(y_i) h = 0 $ where $ 
+	
+	h = (h_k)=vec (H^T) \
+	a^T_(x_i) = (-X_i,-Y_i,-1,0,0,0,x_i X_i,x_i Y_i,x_i)\
+	a^T_(x_i) = (0,0,0,-X_i,-Y_i,-1,y_i X_i,y_i Y_i,y_i)
+
+$
+#note[We need at least 4 points per plane to estimate $H$.]
+==== Extracting the parameters
+Once $H$ is known for an image, we have to extract $K$ from it. 
+Unlike DLT, we do not have a rotation matrix so we cannot apply the $Q R$ decomposition. 
+$ H = mat(h_1,h_2,h_3)= underbrace(mat(c,c s, x_H ; 0 , c(1+m), y_H ; 0,0,1 ),K )
+underbrace(
+mat(r_11,r_12, t_1;
+r_21,r_22, t_2;
+r_31,r_32, t_3;
+),mat(r_1,r_2,t)) \ 
+mat(r_1,r_2,t)=K^(-1) mat(h_1,h_2,h_3) \ arrow r_1=K^(-1)h_1 quad r_2=K^(-1)h_2 
+$
+Since $r_1$ and $r_2$ are rows of the rotation matrix, they are orthonormal, i.e. $ r_1^T r_2=0 "and" norm(r_1)=norm(r_2)=1 $<eq:paramZhang1>
+Then, we can rewrite @eq:paramZhang1 by substitution:
+
+$  r_1^T r_2=0 & arrow #box(stroke:red,outset: 4pt)[$h^T_1 K^(-T) K^(-1)h_2 =0$]
+\ 
+norm(r_1)=norm(r_2)=1 & arrow h_1^T K^(-T)K^(1)h_1 =h_2^T K^(-T) K^(-1)h_2 \ &arrow 
+#box(stroke:red,outset: 4pt)[$h_1^T K^(-T)K^(1)h_1 - h_2^T K^(-T) K^(-1)h_2 = 0$] $<eq:paramZhang2>
+Define the symmetric and positive definite matrix $B := K^(-T)K^(-1)$ then we rewrite @eq:paramZhang2:
+$
+	h_1^T B h_2 & = 0 \ h_1^T B h_1 -  h_2^T B h_2 & = 0
+$
+If we have $B$, we can compute $K$ using the *Cholesky decomposition*
+$  
+B = mat(b_11,b_12,b_13 ;b_21,b_22,b_23; b_31,b_32,b_33) arrow "chol"(B)=A A^T arrow A = K^(-T)
+$
+Define the vector $b= (b_11,b_12,b_13,b_22,b_23,b_33)$ of unknowns from the constraints, we construct a system of linear equations $V b = 0$, where 
+$
+V = vec(v_12^T , v_11^T-v_22^T) "with" v_(i j) = 
+vec(h_(1i)h_(1j),
+	h_(1i)h_(2j)+h_(2i)h_(1j),
+	h_(3i)h_(1j)+h_(1i)h_(3j),
+	h_(2i)h_(2j),
+	h_(3i)h_(2j)+h_(2i)h_(3j),
+	h_(3i)h_(3j)
+) "which are all elements of "H
+$
+Then for one image, we obtain $vec(v_12^T , v_11^T-v_22^T)b=0$.
+
+Since we need to estimate 6 parameters, at least 3 images are necessary, we stack the vectors in the system. From the system we obtain $b$, and thus $K$.
+This solution can be find in the same way we did for DLT, using the SVD decomposition on $B$.
+
 === Camera localization
 This is the problem of determining the pose of a camera (position and orientation) with respect to the world frame, from a set of 3D-2D point correspondences. This is also known as the *Perspective-n-Point (PnP)* problem.
 We assume the camera is already calibrated, therefore we know the intrinsic parameters.

@@ -11,7 +11,6 @@ In many scientific fields, the *degrees of freedom* of a system is the number of
 In 3D space, $n$ points have $3n$ degrees of freedom for translation. If the object is rigid, that is not the case, because the points of the object cannot move independently. In fact, a rigid body has 6 degrees of freedom: 3 for translation and 3 for rotation.
 
 The position and orientation of a rigid body can be described by a roto-translation matrix $T$ that transforms the coordinates of the points of the object expressed in the attached frame $(x_b,y_b,z_b)$ to the reference frame $(x_a,y_a,z_a)$:
-//TODO: 9:30 altre reference a immagini
 The union of the position and the orientation of a rigid body is called the *pose* of the rigid body.
 == Euler angles
 Euler angles describe the orientation of a rigid body in space through three successive intrinsic rotations:
@@ -36,7 +35,6 @@ $ R_z (alpha) = mat( cos alpha, -sin alpha, 0; sin alpha, cos alpha, 0; 0, 0, 1 
 We postmultiply the coordinates of a point expressed in the frame $O"-"z y x$ by the rotation matrix to obtain the coordinates of the point expressed in the rotated frame $O"-"z' y' x'$.
 If we compose the rotations, we can compute one after the other, for example, we can first rotate around the $z$-axis and then around the $y$-axis:
 $ vec( x'',y'',z'' ) = R_y (beta) R_z (alpha) vec( x,y,z ) $
-// TODO: capire se la parte ortonormale serve
 
 We can represent translation and rotation in a single transformation matrix $T$ called roto-translation matrix, which represents the relative pose between the relative frame of the object and the reference frame.
 To do this, we can use homogeneous coordinates, which allow us to represent both rotation and translation in a single matrix.
