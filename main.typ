@@ -10,10 +10,10 @@
   line(length: 100%)
 })
 // options: theme: "light" | "dark" · prose: "notes" | "book" · fonts: (…)
-#show: scholia.with()
+#show: scholia.with(theme: "light")
 #cover("Computer and robot vision ", subtitle: "Course notes", author: "Daniele Besozzi", date: "A.A. 26/27")
 #set heading(numbering: "1")
-#set math.equation(numbering: "1.1")
+#set math.equation(numbering: "1")
 #outline()
 #pagebreak()
 
@@ -30,4 +30,5 @@
   "Step {3}.", // here, we only want the 3rd level
 ))
 #pagebreak()
+
 #include "chapters/appendix.typ"

@@ -261,8 +261,10 @@ The last column of $V$ is the eigenvector corresponding to the smallest eigenval
 - $M$ has rank 11 then, at least 6 control points are needed.
 There is no solution if :
 - All the control points are sampled on a plane (no 3D information).
-- All the control points and the projection center are
-located on a twisted cubic curve (not very likely).
+- All the control points and the projection center are located on a twisted cubic curve (not very likely).
+#figure(
+	image("../figures/1/twistedCubicCurve.png",width: 80%),caption: [Twisted cubic curve.]
+)
 ==== Parameter extraction
 
 Now that we have P, we can compute $X_0,K "and" R$.
