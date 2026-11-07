@@ -77,7 +77,7 @@ $ A = mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1) $
 where $(u_0 , v_0 )$ are the coordinates in pixels of the principal point (which is not on the vertical axis!) and $k_u (k_v )$ (which is translated in respect to the center of the lens) is the inverse of the effective pixel size along the direction of the u (v) axis, measured in $m^(-1)$. 
 
 The matrix $A$ transforms the coordinates from metres to pixels; hence, it pre-multiplies the PPM (refer to @sec:rotoTranslation), which becomes:
-$ P = underbrace(mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1),A) underbrace(mat(-f,0,0,0;0,f,0,0;0,0,1,0),"PPM")= mat(f k_u,0, u_0,0; 0, f k_v, v_0,0;0,0,1,0)= K mat(I_3,0)  $<eq:Pmatrix>
+$ P = underbrace(mat(-k_u,0, u_0; 0, -k_v, v_0;0,0,1),A) underbrace(mat(-f,0,0,0;0,-f,0,0;0,0,1,0),"PPM")= mat(f k_u,0, u_0,0; 0, f k_v, v_0,0;0,0,1,0)= K mat(I_3,0)  $<eq:Pmatrix>
 where
 $ K = mat(f k_u,0, u_0; 0, f k_v, v_0;0,0,1) $ is called the *intrinsic parameters matrix* of the camera, while $mat(I_3,0)$ is the perspective transformation without parameters.
 It is obtained when the world reference frame coincides with the camera reference frame and the image points are expressed in normalized image coordinates, that is,
@@ -127,7 +127,7 @@ They will often be referred to with the same notation as the world coordinates $
 - *Normalised image coordinates*: are measured in metres with origin at the principal point and denoted by $ tilde(q) = vec(x, y)$.
 - *Image coordinates*: are measured in pixels with origin in the upper left corner of the image and denoted by $m = vec(u, v)$.
 === Thin lenses
-A pinhole camera is really small (in theory, infinitesimal) therefore the energy reaching the image plane also is. In order to obtain an image we would need a transformation rate which is, in theory, infinite and therefore impossible to obtain.
+A pinhole is really small (in theory, infinitesimal) therefore the energy reaching the image plane also is. In order to obtain an image we would need a transformation rate which is, in theory, infinite and therefore impossible to obtain.
 If we simply increased the size in the hole we would not be able to control the amount of energy coming to the image plane, and would therefore obtain a spot instead of a point the image plane. If this were to occur, then the image would be blurry (*circle of confusion*).
 
 Vertebrate eyes and cameras use lenses. A lens, being larger than a pinhole, can gather more light.
@@ -167,7 +167,7 @@ Given the correspondences between n non-coplanar control points  and their proje
 The image coordinates of the control points can be obtained manually or by classical image processing methods. From matrix P, we can obtain the intrinsic and extrinsic parameters of the camera by means of a matrix factorization.
 In order to make the transformation linear, we use homogeneous coordinates for the points in the scene and their projections in the image.
 
-Given a point $X$ in space, $underbrace(q',x times 1)= underbrace(P,3 times 4) space underbrace(X,4 times 1)$ is its projection, where $P = underbrace(K,3 times 3) space underbrace(R,3 times 3) underbrace([I_3 | X_0], 3 times 4 )$.
+Given a point $X$ in space, $underbrace(q',3 times 1)= underbrace(P,3 times 4) space underbrace(X,4 times 1)$ is its projection, where $P = underbrace(K,3 times 3) space underbrace(R,3 times 3) underbrace([I_3 | X_0], 3 times 4 )$.
 
 - $K = mat(f_x, s,c_x;0,f_y,c_y;0,0,1)$ is the matrix of intrinsic parameters (*5 parameters*), where:
 	- $f_x$ and $f_y$ are the focal lengths in the x and y directions, respectively.
@@ -192,7 +192,7 @@ from which we have to estimate the 11 parameters of $P$.
 In practice, it is advisable to use all the available points (the more, the better) to
 compensate for the inevitable measurement errors.]
 ==== Projection matrix estimation
-We know need to estimate the 11 parameters of $P$, given the 3D coordinates of $X_i$ with $i in I,|I| >= 6$ control points, and the observed image coordinates $q_i$ of their projections produced by the uncalibrated camera, $q_i=P X_i, forall i in I$.
+We now need to estimate the 11 parameters of $P$, given the 3D coordinates of $X_i$ with $i in I,|I| >= 6$ control points, and the observed image coordinates $q_i$ of their projections produced by the uncalibrated camera, $q_i=P X_i, forall i in I$.
 $ q_i = P X_i = mat(p_11,p_12,p_13,p_14;p_21,p_22,p_23,p_24;p_31,p_32,p_33,p_34) X_i = vec(A^T,B^T,C^T) X_i \ q_i = P X_i = 
   lr([
     #table(
@@ -444,7 +444,7 @@ When photons hit the CMOS sensor, they are absorbed by the photodiodes within ea
 
 After the charge is converted to voltage at the pixel level, the signal is amplified to make it strong enough for further processing. This amplification occurs within the same pixel, minimizing the distance the signal has to travel, which reduces noise and improves image quality. In many CMOS sensors, the analog voltage signals are converted to digital signals at the column or even the pixel level by an integrated ADC. This localized conversion is one of the reasons CMOS sensors can achieve high-speed readouts.
 
-One characteristic of many CMOS sensors is the *rolling shutter* effect. Because each row or column of pixels is read out sequentially rather than all at once, moving objects can appear distorted. For example, a fast-moving car might look skewed because different parts of the image are captured at slightly different times. However, advanced CMOS sensors can mitigate this effect, and some even employ a *global shutter* to capture all pixels simultaneously, similar to CCD sensors.
+One characteristic of many CMOS sensors is the *rolling shutter* effect. Because each row or column of pixels is read out sequentially rather than all at once, moving objects can appear distorted. For example, a fast-moving car might look skewed because different parts of the image are captured at slightly different times. However, advanced CMOS sensors can mitigate this effect, and some even employ a *global shutter* to capture all pixels simultaneously.
 #figure(
 	image("../figures/1/rollingGlobalShutter.png"),caption: [Rolling and global shutter example of the same image.]
 )
@@ -582,7 +582,8 @@ We can also discriminate between radial and tangential distortion. Radial distor
 #figure(
 	image("../figures/1/Definitions-of-radial-tangential-distortion-on-the-2-D-plane-3038096262.png",width: 80%),caption: [Definitions of radial and tangential distortion on the 2-D plane]
 )
-Note that both radial and tangential are a *function of the radius*, that is the distance from the optical axis (principal point). Therefore, they are both zero at the optical axis and increase with distance from it. 
+Note that both radial and tangential are a *polynomial function of the radius* (not linear, degree > 1), that is the distance from the optical axis (principal point). Therefore, they are both zero at the optical axis and increase with distance from it. 
+Typically, instead of using lenses to correct the distortion, we can correct it in software by applying a transformation to the image. This is called *undistortion*, and is a much cheaper solution than using lenses to correct the distortion.
 ==== Chromatic aberration
 Chromatic aberration is a type of distortion in which there is a failure of a lens to focus all colors to the same convergence point. It occurs because lenses have different refractive indices for different wavelengths of light, causing them to bend light of different colors by different amounts. This results in a misalignment of colors in the image, leading to color fringing around the edges of objects, especially in high-contrast areas. Chromatic aberration can be minimized by using achromatic lenses, which are designed to bring two wavelengths (typically red and blue) into focus in the same plane, or by using apochromatic lenses, which bring three wavelengths into focus in the same plane.
 #figure(
