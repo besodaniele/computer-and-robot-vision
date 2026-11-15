@@ -33,7 +33,7 @@ Clearly, for all the image points we have
 $z_l = f_l$ or $z_r = f_r$.
 
 The reference frames of the left and right cameras are related via the extrinsic parameters.
-These define a rigid transformation in 3-D space, defined by a translation vector, $T = (O_r,O_l)$, and a rotation matrix $R$.
+These define a rigid transformation in 3-D space, defined by a translation vector, $T = (O_r - O_l)$, and a rotation matrix $R$.
 Given a point $P$ in space, the relation between
 $P_l$ and $P_r$ is therefore
 $  P_r = R (P_l - T) $<eq:epipolarGeometryCorrespondence>
@@ -92,7 +92,7 @@ estimate the fundamental matrix from a number of point matches in pixel coordina
 Of the various methods possible, the eight-point algorithm is by far the simplest.
 We consider here the fundamental matrix only.
 The idea behind the eight-point algorithm is very simple. Assume that you have been able to establish $n$ point correspondences between the images. Each correspondence gives you a homogeneous linear equation as in @eq:fundamentalMatrix for the nine entries of $F$, we obtain an homogeneous linear system.
-If you have at least eight correspondences ($n > 8$) and the $n $points do not form degenerate configurations, the nine entries of F can be determined as the nontrivial solution of the system.
+If you have at least eight correspondences ($n > 8$) and the $n$ points do not form degenerate configurations, the nine entries of F can be determined as the nontrivial solution of the system.
 Since the system is homogeneous, the solution is unique up to a signed scaling factor. If one uses more than eight points, so that the system is overdetermined, the solution can once again be obtained by means of SVD related techniques (like in camera calibration). If $A$ is the system’s matrix and
 $A = U D V^T$, the solution is the column of $V$ corresponding to the only null singular value of $A$.
 
@@ -118,7 +118,7 @@ This plane, can also be defined without $underline(P)$, by using the two project
 	"../figures/2/epipoleOutsidePlane.png",width: 100%),caption:[Note that the epipoles are not necessarily inside the projection planes, this is not particularly a problem.])
 
 ]
-The situation shown in figure <fig:standardFormGeometry> is called the *standard form* of stereoscopy (or extreme geometry).
+The situation shown in @fig:standardFormGeometry is called the *standard form* of stereoscopy (or extreme geometry).
 In this case, the two optical axes are parallel, and the two projection planes are coplanar.
 We can also convert any stereoscopic geometry into the standard form by applying a suitable rotation and translation to the two projection planes. This is called *rectification* and it is a common preprocessing step in stereoscopic image processing. In order to do this, we need to know the intrinsic and extrinsic parameters of the two cameras, which can be obtained through camera calibration.
 

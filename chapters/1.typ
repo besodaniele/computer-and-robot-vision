@@ -297,7 +297,7 @@ This method is the state of the art of camera calibration, and is the most used 
 	image("../figures/1/zhangCalibration.png",width: 80%),caption: [Zhang's method for camera calibration. The calibration pattern is a planar checkerboard, which is easy to manufacture and use.]
 )
 First, we need to compute where are the corners of the checkerboard (purely image processing problem).
-This is done because there are many pixels on the corners of the boxed, by interpolating the corners we smooth out the noise.
+This is done because there are many pixels on the corners of the boxes, by interpolating the corners we smooth out the noise.
 #figure(
 	image("../figures/1/ZhangBoard.png",width: 80%),caption: [Zhang's method for camera calibration. The corners of the checkerboard are detected in the image.]
 )
@@ -378,7 +378,7 @@ $
 Then for one image, we obtain $vec(v_12^T , v_11^T-v_22^T)b=0$.
 
 Since we need to estimate 6 parameters, at least 3 images are necessary, we stack the vectors in the system. From the system we obtain $b$, and thus $K$.
-This solution can be find in the same way we did for DLT, using the SVD decomposition on $B$.
+This solution can be found in the same way we did for DLT, using the SVD decomposition on $B$.
 
 === Camera localization
 This is the problem of determining the pose of a camera (position and orientation) with respect to the world frame, from a set of 3D-2D point correspondences. This is also known as the *Perspective-n-Point (PnP)* problem.
@@ -429,10 +429,17 @@ This process continues until the entire image has been read out. The reading tim
 Consumer-grade color CCD cameras essentially use the same chips as black-and-white cameras, except that successive rows or columns of sensors are made sensitive to red, green or blue light often using a filter coating that blocks the complementary light.
 
 The spatial resolution of single-CCD cameras is of course limited, and higher-quality cameras use a beam splitter to ship the image to three different CCDs via color filters.
-
+==== Full frame CCD
+The full frame CCD is the simplest form of sensor in which incoming photons fall on the full light sensitive sensor array. To readout the sensor, the accumulated charge must then be shifted vertically row by row into the serial output register and for each row the readout register must be shifted horizontally to readout each individual pixel. This is known as "Progressive Scan" readout. A disadvantage of full frame is charge smearing caused by light falling on the sensor whilst accumulated charge signal is being transferred to the readout register. To avoid this, devices sometimes utilise a mechanical shutter to cover the sensor during the readout process. However, mechanical shutters have lifetime issues and are relatively slow. Full frame CCDs are typically the most sensitive CCDs available and can work efficiently in many different illumination situations.
+==== Frame-transfer CCD
+The frame-transfer CCD uses a two-part sensor in which one-half of the parallel array is used as a storage region and is protected from light by a light-tight mask. Incoming photons are allowed to fall on the uncovered portion of the array and the accumulated charge is then rapidly shifted (in the order of milliseconds) into the masked storage region for charge transfer to the serial output register. While the signal is being integrated on the light-sensitive portion of the sensor, the stored charge is read out.
+==== Interline-transfer CCD
+The interline-transfer CCD incorporates charge transfer channels called Interline Masks (see @fig:ccdTypes). These are immediately adjacent to each photodiode so that the accumulated charge can be rapidly shifted into the channels after image acquisition has been completed. The very rapid image acquisition virtually eliminates image smear. Altering the voltages at the photodiode so that the generated charges are injected into the substrate, rather than shifted to the transfer channels, can electronically shutter interline-transfer CCDs.
+Interline devices have the disadvantage that the interline mask effectively reduces the light sensitive area of the sensor. This can be partially compensated by the use of microlens arrays to increase the photodiode fill factor.
 #figure(
 	image("../figures/1/CCD2.png"),caption: [CCD image sensor pipeline]
 )
+#figure(image("../figures/1/ccdTypes.png"),caption: [CCD types.])<fig:ccdTypes>
 #remark[The flow of electricity in CCD sensors obviously generates heat, which equals energy. The sensors pick up this heat as noise, therefore the sensors need to be cooled to reduce noise.]
 === CMOS sensors
 CMOS sensors are integral to modern digital imaging, particularly in devices like smartphones, digital cameras, and high-speed industrial systems. Unlike CCD sensors, CMOS sensors process image data in a way that allows for faster operation and lower power consumption.
@@ -492,6 +499,10 @@ We can linearly map the values into the range of the sensor, but this might be h
 	image("../figures/1/singleExposureCompression.png",width: 80%),caption: [Single exposure HDR imaging]
 )
 Please note that this introduces a non-linear mapping of the values, which is a change of semantics of the values, and therefore a change of the meaning of the image.
+==== Photon counting (overflow counting)
+In this approach, each pixel keeps track of how many times its charge capacity is filled during a single exposure. Once the pixel reaches its maximum capacity, the accumulated charge is counted and the pixel is reset, allowing it to start accumulating charge again. A counter stores the number of times this process happens. At the end of the exposure, the remaining charge is also measured, and the final pixel value is reconstructed by combining the counter value with the remaining charge.
+
+This allows the sensor to capture very bright regions without saturating, while still maintaining sensitivity to darker regions. However, it requires additional circuitry for counting and resetting the pixels, which increases hardware complexity and can be difficult to implement when the number of transistors available per pixel is limited.
 === Color cameras
 There are different approaches to color cameras:
 ==== Color filter array
