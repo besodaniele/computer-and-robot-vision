@@ -68,7 +68,7 @@ A common density function is that of the one-dimensional
 $ p(x)= (2 pi sigma^2)^(1/2) exp( -1/2 (x - mu)^2 / sigma^2 ) $
 Normal distributions are central in topics that will be covered, we often abbreviate them as $cal(N)(x; mu, sigma^2) $, which denotes the value of the Gaussian PDF with mean $mu$ and variance $sigma^2$ at $x$. The element $x$ can be a scalar or a vector, and the mean $mu$ and variance $sigma^2$ can be scalars, vectors, or matrices, depending on the dimensionality of $x$.
 Normal distributions over vectors are called multivariate. Multivariate normal distributions are characterized by density functions of the following form:
-$ p(x) = det(2pi Sigma)^(-1/2) exp( -1/2 (x - mu)^T Sigma^(-1) (x - mu) ) $
+$ p(x) = det(2pi Sigma)^(-1/2) exp( -1/2 (x - mu)^T Sigma^(-1) (x - mu) ) $<eq:MultivariateNormalDistribution>
 Here $mu$ is the mean vector. $Sigma$ is a positive semidefinite and symmetric matrix called the covariance matrix.
 The argument in the exponent in this PDF is quadratic in $x$, and the parameters of this quadratic function are $mu$ and $Sigma$.
 

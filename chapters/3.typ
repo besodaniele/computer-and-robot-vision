@@ -1,5 +1,7 @@
 #import "@preview/scholia:0.1.0": *
 #import "@preview/lovelace:0.3.1": *
+#import "@preview/cetz:0.3.4"
+#import "@preview/cetz-plot:0.1.1": plot
 Robotics is the science of perceiving and manipulating the physical world through computer-controlled devices. 
 Robotics systems are situated in the physical world, perceive information on their environments through sensors, and manipulate through physical forces.
 == Uncertainty in robotics
@@ -202,12 +204,12 @@ This probability distribution is often referred to as *prediction* in the contex
 === Bayes filter algorithm
 The most general algorithm for calculating beliefs is given by the Bayes filter algorithm. This algorithm calculates the belief distribution $"bel"$ from measurement and control data.
 #figure(
-pseudocode-list(stroke: none, title: smallcaps[Bayes filter])[
-	+ Algorithm Bayes_filter($"bel"(x_(t-1)), u_t, z_t$):
-		+ $forall x_t$ do:
+pseudocode-list[
++ *Algorithm Bayes_filter*($"bel"(x_(t-1)), u_t, z_t$):
+		+ $forall x_t$ *do*:
 			+ $overline("bel")(x_t) = integral p(x_t | x_(t-1), u_t) dot "bel"(x_(t-1)) d x_(t-1)$
 			+ $"bel"(x_t) = eta dot p(z_t | x_t) dot overline("bel")(x_t)$
-		+ return $"bel"(x_t)$
+		+ *return* $"bel"(x_t)$
 ],caption:"The general algorithm for bayes filter")<alg:bayes_filter>
 The algorithm showns in @alg:bayes_filter is recursive, $"bel"(x_t)$ at time $t$ is calculated from the belief $"bel"(x_(t-1))$ at time $t-1$. Its input is the previous belief $"bel"(x_(t-1))$, the most recent control $u_t$ and the measurement $z_t$, and its output is the new belief $"bel"(x_t)$.
 The Bayes filter algorithm possesses two essential steps:
@@ -259,3 +261,237 @@ When choosing an approximation, one has to trade off a range of properties:
   
 	The difficulty of implementing probabilistic algorithms depends on a variety of factors, such as the form of the measurement probability $p(z_t | x_t)$ and the state transition probability $p(x_t |u_t, x_(t-1))$. Particle representations often yield surprisingly simple implementations for complex nonlinear systems (one of the reasons for their recent popularity).
 == Gaussian filters
+In this section we present a family of recursive state estimators, called *Gaussian filters*. These filters are the earliest tractable implementations of the Bayes filter for continuous spaces.
+They are still the most common technique, despite their shortcoming.
+Gaussian techniques all share the basic idea that beliefs are represented by multivariate normal distributions (see @eq:MultivariateNormalDistribution).
+This density over the variable $x$ is characterized by two sets of parameters:
+- *mean* $mu$: a vector that possesses the same dimensionality as the state $x$
+- *covariance* $Sigma$: a quadratic matrix that is symmetric and positive-semidefinite. Its dimension is the dimensionality of the state $x$ squared.
+#remark[The number of elements in the covariance matrix depends quadratically on the number of elements in the state vector.]
+The commitment to represent the posterior by a Gaussian has important ramifications. Most importantly, Gaussians are *unimodal*; they possess a single maximum. Such a posterior is characteristic of many tracking problems in robotics, in which the posterior is focused around the true state with a
+small margin of uncertainty. Gaussian posteriors are a poor match for many global estimation problems in which many distinct hypotheses exist, each of which forms its own mode in the posterior.
+
+The parameterization of a Gaussian by its mean and covariance is called the *moments parameterization*. This is because the mean and covariance are the first and second moments of a probability distribution; all other moments are zero for normal distributions.
+
+Here we will also discuss another parameterization, called *canonical parameterization*, or sometimes natural parameterization. Both parameterization, the moments and the canonical parameterization, are functionally equivalent in that a bijective mapping exists that transforms one into the other. However, they lead to filter algorithms with somewhat different computational characteristics.
+
+As we shall see, the canonical and the natural parameterization are best thought of as duals: what appears to be computationally easy in one parameterization is involved in the other, and vice versa.
+=== The Kalman filter
+Probably the best studied technique for implementing Bayes filters is the Kalman filter, or (KF).
+It was first invented as a technique for filtering and prediction in linear Gaussian systems, which will be defined here.
+
+#note[The Kalman filter implements belief computation for continuous states. It is not applicable to discrete or hybrid state spaces.]
+The Kalman filter represents beliefs by the moments parameterization: At time $t$, the belief is represented by the the mean $mu_t$ and the covariance $Sigma_t$.
+==== Conditions for Gaussian posteriors
+Posteriors are Gaussian if the following three properties hold, in addition to the Markov assumptions of the Bayes filter.
+1. The *state transition probability* $p(x_t | u_t, x_(t-1))$ must be a *linear function* in its arguments with added Gaussian noise.
+  
+  This is expressed by the following equation:
+  $ x_t = A_t x_(t-1) + B_t u_t + epsilon t $<eq:LinearStateTransition>
+	Where $
+	x_t = vec(x_(1,t), x_(2,t), dots.v, x_(n,t)) 
+	x_(t-1) = vec(x_(1,t-1), x_(2,t-1), dots.v, x_(n,t-1)) 
+	u_t = vec(u_(1,t), u_(2,t), dots.v, u_(m,t)) $ 
+	are respectively the state vector at time $t$ and time $t-1$, and the control vector at time $t$.
+	$A_t in mat_(n times n)$ and $B_t in mat_(n times m)$ are matrices.
+	By multiplying the state and control vector with the matrices $A_t$ and $B_t$, respectively, the state transition function becomes linear in its arguments. Thus, Kalman filters assume linear system dynamics.
+
+	The random variable $epsilon t$ is a Gaussian random vector that models the *uncertainty introduced by the state transition*. It is of the same dimension as the state vector. Its mean is zero, and its covariance will be denoted $R_t$.
+	
+	A state transition probability of the form shown in @eq:LinearStateTransition is called a *linear Gaussian*, to reflect the fact that it is linear in its arguments with additive Gaussian noise.
+
+	Equation @eq:LinearStateTransition defines the state transition probability $p(x_t | u_t, x_(t-1))$. This probability is obtained by plugging Equation @eq:LinearStateTransition into the definition of the multivariate normal distribution @eq:MultivariateNormalDistribution. 
+	
+	The mean of the posterior state is given by $A_t x_(t-1) + B_t u_t$ and the covariance by $R_t$:
+	$ p(x_t | u_t, x_(t-1)) = & det(2pi R_t)^(-1/2) dot\ & exp(-1/2 (x_t - A_t x_(t-1) + B_t u_t)^T R_t^(-1) (x_t - A_t x_(t-1) + B_t u_t)) $
+	2. The *measurement probability* $p(z_t | x_t)$ must also be *linear* in its arguments, with added Gaussian noise:
+	$ z_t = C_t x_t + delta_t $
+	Here $C_t$ is a matrix of size $k times n$, where $k$ is the dimension of the measurement vector $z_t$. The vector $delta_t$ describes the measurement noise. The distribution of $delta_t$ is a multivariate Gaussian with zero mean and covariance $Q_t$.
+
+	The measurement probability is thus given by the following multivariate normal distribution:
+	$ p(z_t | x_t) =  det(2pi Q_t)^(-1/2) dot exp(-1/2 (z_t - C_t x_t)^T Q_t^(-1) (z_t - C_t x_t)) $
+	3. The initial belief $"bel"(x_0)$ must be a Gaussian distribution.
+  We will denote the mean of this belief by $mu_0$ and the covariance by $Sigma_0$:
+	$ "bel"(x_0)=p(x_0)= det(2pi Sigma_0)^(-1/2) dot exp(-1/2 (x_0 - mu_0)^T Sigma_0^(-1) (x_0 - mu_0)) $
+These three assumptions are sufficient to ensure that the posterior $"bel"(x_t)$ is always a Gaussian, for any point in time $t$. The proof is not trivial and will not be discussed here.
+==== The algorithm
+#figure(
+pseudocode-list[
+  + *Algorithm Kalman_filter*($mu_(t-1), Sigma_(t-1), u_t, z_t$):
+	+ $overline(mu)_t = A_t mu_(t-1) + B_t u_t$
+	+ $overline(Sigma)_t = A_t Sigma_(t-1) A_t^T + R_t$
+	+ $K_t = overline(Sigma)_t C_t^T (C_t overline(Sigma)_t C_t^T + Q_t)^(-1)$
+	+ $mu_t = overline(mu)_t + K_t (z_t - C_t overline(mu)_t)$
+	+ $Sigma_t = (I - K_t C_t) overline(Sigma)_t$
+
+	+ *return* $mu_t,Sigma_t$
+],caption:"The Kalman filter algorithm for linear Gaussian state transitions and measurements") <alg:kalman_filter>
+Kalman filters represent the belief $"bel"(x_t)$ at time $t$ by the mean $mu_t$ and the covariance $Sigma_t$.
+
+The input of the Kalman filter is the belief at time $t - 1$, represented by $mu_(t-1)$ and $Sigma_(t-1)$.
+To update these parameters, Kalman filters require the control $u_t$ and the measurement $z_t$. The output is the belief at time $t$, represented by $mu_t$ and $Sigma_t$.
+- In lines 2 and 3, the predicted belief $overline(mu)_t$ and $overline(Sigma)_t$ is calculated representing the belief $"bel"(x_t)$ one time step later, but before incorporating the measurement $z_t$. This belief is obtained by incorporating the control $u_t$. 
+
+	- The mean is updated using the deterministic version of the state transition function, with the mean $mu_(t-1)$ substituted for the state $x_(t-1)$.
+	- The update of the covariance considers the fact that states depend on previous states through the linear matrix $A_t$. This matrix is multiplied twice into the covariance, since the covariance is a quadratic matrix.
+
+- The belief $"bel"(x_t)$ is subsequently transformed into 	the desired belief $"bel"(x_t)$ in lines 4 through 6, by incorporating the measurement $z_t$. 
+ 
+  The variable $K_t$, computed in line 4 is called *Kalman gain*, which specifies the degree to which the measurement is incorporated into the new state estimate.
+- Line 5 manipulates the mean, by adjusting it in proportion to the Kalman gain $K_t$ and the deviation of the actual measurement, $z_t$, and the measurement predicted according to the measurement probability. The key concept here is the *innovation*, which is the difference between the actual measurement $z_t$ and the expected measurement $C_t overline(mu)_t$ in line 5.
+- Finally, the new covariance of the posterior belief is calculated in line 6, adjusting for the information gain resulting from the measurement.
+
+#note[The Kalman filter is computationally quite efficient. For today’s best algorithms, the complexity of matrix inversion is approximately $O(d^(2.4))$ for a matrix of size $d times d$.]
+#remark[Each iteration of the Kalman filter algorithm, as stated here, is lower bounded by (approximately) $O(k^(2.4))$, where $k$ is the dimension of the measurement vector $z_t$. This (approximate) cubic complexity stems from the
+matrix inversion in line 4.]
+Even for certain sparse updates, it is also at least in $O(n^2)$, where $n$ is the dimension of the state space, due to the multiplication in line 6 (the matrix $K_t C_t$ may be sparse).
+
+In many applications, such as the robot mapping applications, the measurement space is much lower dimensional than the state space, and the update is dominated by the $O(n^2)$ operations.
+==== 1D Kalman filter example
+@fig:kalman_filter_1d_example illustrates the Kalman filter algorithm for a simplistic one-dimensional localization scenario. Suppose the robot moves along the horizontal axis in each diagram in @fig:kalman_filter_1d_example. 
+1. Let the prior over the robot location be given by the normal distribution shown in @fig:kalman_filter_1d_example(a). 
+2. The robot queries its sensors on its location (e.g., a GPS system), and those return a measurement that is centered at the peak of the red Gaussian in @fig:kalman_filter_1d_example(b). This red Gaussian illustrates this measurement: Its peak is the value predicted by the sensors, and its width (variance) corresponds to the uncertainty in the measurement. 
+3. Combining the prior with the measurement, via lines 4 through 6 of the Kalman filter algorithm, yields the bold Gaussian in @fig:kalman_filter_1d_example(c). 
+   
+	This belief’s mean lies between the two original means, and its uncertainty radius is smaller than both contributing Gaussians. The fact that the residual uncertainty is smaller than the contributing Gaussians may appear counter-intuitive, but it is a general characteristic of information integration in Kalman filters.
+4. Next, assume the robot moves towards the right. Its uncertainty grows due to the fact that the state transition is stochastic. 
+5. Lines 2 and 3 of the Kalman filter provide us with the Gaussian shown in bold in @fig:kalman_filter_1d_example(d). This Gaussian is shifted by the amount the robot moved, and it is also wider for the reasons just explained.
+6. The robot receives a second measurement illustrated by the red Gaussian in @fig:kalman_filter_1d_example(e), which leads to the posterior shown in bold in @fig:kalman_filter_1d_example(f). 
+
+As this example illustrates, the Kalman filter alternates a measurement update step (lines 5-7), in which sensor data is integrated into the present belief, with a prediction step (or control update step), which modifies the belief in accordance to an action. The update step decreases and the prediction step increases uncertainty in the robot’s belief.
+// 1D Gaussian PDF
+#let gaussian(x, mu, var) = {
+  1 / calc.sqrt(2 * calc.pi * var) * calc.exp(-((x - mu) * (x - mu)) / (2 * var))
+}
+
+// High-contrast, colorblind-friendly palette
+#let col-belief      = rgb("#005AB5") // Vivid blue: active / resulting belief
+#let col-measurement = rgb("#DC3220") // Vermilion red: new measurement
+#let col-prior       = rgb("#7A869A") // Muted slate: prior belief
+#let col-prior-meas  = rgb("#E07A5F") // Soft coral (dashed): prior measurement
+
+#let st-belief      = (paint: col-belief, thickness: 1.6pt)
+#let st-measurement = (paint: col-measurement, thickness: 1.6pt)
+#let st-prior       = (paint: col-prior, thickness: 1.0pt)
+#let st-prior-meas  = (paint: col-prior-meas, thickness: 1.0pt, dash: "dashed")
+
+// Helper for a single subplot panel
+#let kf-panel(label, curves) = {
+  grid(
+    columns: (auto, 1fr),
+    column-gutter: 4pt,
+    align: (top, top),
+    text(weight: "bold", size: 9.5pt)[#label],
+    {
+      set text(size: 6.5pt)
+      cetz.canvas({
+        plot.plot(
+          size: (4.9, 3.35),
+          x-min: 0,
+          x-max: 30,
+          y-min: 0,
+          y-max: 0.25,
+          x-tick-step: 5,
+          y-tick-step: 0.05,
+          x-label: none,
+          y-label: none,
+          {
+            for c in curves {
+              plot.add(
+                domain: (0, 30),
+                samples: 200,
+                style: (stroke: c.stroke),
+                x => gaussian(x, c.mu, c.var),
+              )
+            }
+          },
+        )
+      })
+    },
+  )
+}
+
+// Exact 1D Kalman filter parameters matching the original figure
+#let mu0 = 8.0
+#let var0 = 16.0
+
+#let z1 = 6.0
+#let var-z1 = 4.0
+
+#let k1 = var0 / (var0 + var-z1) // 0.8
+#let mu1 = mu0 + k1 * (z1 - mu0) // 6.4
+#let var1 = (1 - k1) * var0 // 3.2
+
+#let u = 15.0
+#let var-u = 9.0
+#let mu2-pred = mu1 + u // 21.4
+#let var2-pred = var1 + var-u // 12.2
+
+#let z2 = 25.0
+#let var-z2 = 9.0
+#let k2 = var2-pred / (var2-pred + var-z2) // ~0.5755
+#let mu2 = mu2-pred + k2 * (z2 - mu2-pred) // ~23.4717
+#let var2 = (1 - k2) * var2-pred // ~5.1792
+
+// Legend swatch helper
+#let swatch(stroke-style, label) = box[
+  #box(width: 14pt, height: 6pt, baseline: 1pt, line(length: 14pt, stroke: stroke-style))
+  #h(3pt)#label
+]
+
+#figure(
+  block(width: 13.4cm)[
+    // Compact color legend above the grid
+    #align(center)[
+      #set text(size: 8pt)
+      #swatch(st-belief)[Active / updated belief]
+      #h(10pt)
+      #swatch(st-measurement)[New measurement]
+      #h(10pt)
+      #swatch(st-prior)[Prior belief]
+      #h(10pt)
+      #swatch(st-prior-meas)[Prior measurement]
+    ]
+    #v(4pt)
+    #grid(
+      columns: (1fr, 1fr),
+      column-gutter: 18pt,
+      row-gutter: 12pt,
+      // (a) Initial belief
+      kf-panel("(a)", (
+        (mu: mu0, var: var0, stroke: st-belief),
+      )),
+      // (b) Measurement with associated uncertainty
+      kf-panel("(b)", (
+        (mu: mu0, var: var0, stroke: st-prior),
+        (mu: z1, var: var-z1, stroke: st-measurement),
+      )),
+      // (c) Belief after integrating the measurement
+      kf-panel("(c)", (
+        (mu: mu0, var: var0, stroke: st-prior),
+        (mu: z1, var: var-z1, stroke: st-prior-meas),
+        (mu: mu1, var: var1, stroke: st-belief),
+      )),
+      // (d) Belief after motion to the right
+      kf-panel("(d)", (
+        (mu: mu1, var: var1, stroke: st-prior),
+        (mu: mu2-pred, var: var2-pred, stroke: st-belief),
+      )),
+      // (e) New measurement with associated uncertainty
+      kf-panel("(e)", (
+        (mu: mu2-pred, var: var2-pred, stroke: st-prior),
+        (mu: z2, var: var-z2, stroke: st-measurement),
+      )),
+      // (f) Resulting belief
+      kf-panel("(f)", (
+        (mu: mu2-pred, var: var2-pred, stroke: st-prior),
+        (mu: z2, var: var-z2, stroke: st-prior-meas),
+        (mu: mu2, var: var2, stroke: st-belief),
+      )),
+    )
+  ],
+  caption: [
+    Illustration of Kalman filters: *(a)* initial belief (blue), *(b)* a measurement (red) with the associated uncertainty alongside the prior belief (gray), *(c)* belief after integrating the measurement into the belief using the Kalman filter algorithm (blue), *(d)* belief after motion to the right (blue), which introduces uncertainty, *(e)* a new measurement (red) with associated uncertainty, and *(f)* the resulting belief (blue).
+  ],
+)<fig:kalman_filter_1d_example>
+=== The extended Kalman filter

@@ -55,7 +55,7 @@
   "Step {3}.", // here, we only want the 3rd level
 ))
 #set math.equation(numbering: (n, ..) => {
-  numbering("(A.1)", counter(heading).get().first(), n)
+  numbering("A.1", counter(heading).get().first(), n)
 })
 #set figure(numbering: (n, ..) => {
   numbering("A.1", counter(heading).get().first(), n)
