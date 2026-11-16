@@ -14,7 +14,7 @@
 #show: scholia.with(theme: "light")
 #cover("Computer and robot vision ", subtitle: "Course notes", author: "Daniele Besozzi", date: "A.A. 26/27")
 #set math.equation(numbering: (n, ..) => {
-  numbering("(1.1)", counter(heading).get().first(), n)
+  numbering("1.1", counter(heading).get().first(), n)
 })
 #set figure(numbering: (n, ..) => {
   numbering("1.1", counter(heading).get().first(), n)

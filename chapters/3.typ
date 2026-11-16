@@ -2,6 +2,12 @@
 #import "@preview/lovelace:0.3.1": *
 #import "@preview/cetz:0.3.4"
 #import "@preview/cetz-plot:0.1.1": plot
+#import "utils/fig33-helpers.typ": fig-gaussian-transform
+#import "utils/kalman-figure.typ": fig-kalman-filter
+#import "utils/fig34-helpers.typ": fig-ekf-linearization
+#import "utils/fig35-helper.typ": fig-ekf-uncertainty
+#import "utils/fig36-helper.typ": fig-ekf-nonlinearity
+
 Robotics is the science of perceiving and manipulating the physical world through computer-controlled devices. 
 Robotics systems are situated in the physical world, perceive information on their environments through sensors, and manipulate through physical forces.
 == Uncertainty in robotics
@@ -300,17 +306,17 @@ Posteriors are Gaussian if the following three properties hold, in addition to t
 	
 	A state transition probability of the form shown in @eq:LinearStateTransition is called a *linear Gaussian*, to reflect the fact that it is linear in its arguments with additive Gaussian noise.
 
-	Equation @eq:LinearStateTransition defines the state transition probability $p(x_t | u_t, x_(t-1))$. This probability is obtained by plugging Equation @eq:LinearStateTransition into the definition of the multivariate normal distribution @eq:MultivariateNormalDistribution. 
+	@eq:LinearStateTransition defines the state transition probability $p(x_t | u_t, x_(t-1))$. This probability is obtained by plugging @eq:LinearStateTransition into the definition of the multivariate normal distribution (see @eq:MultivariateNormalDistribution). 
 	
 	The mean of the posterior state is given by $A_t x_(t-1) + B_t u_t$ and the covariance by $R_t$:
 	$ p(x_t | u_t, x_(t-1)) = & det(2pi R_t)^(-1/2) dot\ & exp(-1/2 (x_t - A_t x_(t-1) + B_t u_t)^T R_t^(-1) (x_t - A_t x_(t-1) + B_t u_t)) $
-	2. The *measurement probability* $p(z_t | x_t)$ must also be *linear* in its arguments, with added Gaussian noise:
-	$ z_t = C_t x_t + delta_t $
+	1. The *measurement probability* $p(z_t | x_t)$ must also be *linear* in its arguments, with added Gaussian noise:
+	$ z_t = C_t x_t + delta_t $<eq:LinearMeasurement>
 	Here $C_t$ is a matrix of size $k times n$, where $k$ is the dimension of the measurement vector $z_t$. The vector $delta_t$ describes the measurement noise. The distribution of $delta_t$ is a multivariate Gaussian with zero mean and covariance $Q_t$.
 
 	The measurement probability is thus given by the following multivariate normal distribution:
 	$ p(z_t | x_t) =  det(2pi Q_t)^(-1/2) dot exp(-1/2 (z_t - C_t x_t)^T Q_t^(-1) (z_t - C_t x_t)) $
-	3. The initial belief $"bel"(x_0)$ must be a Gaussian distribution.
+	2. The initial belief $"bel"(x_0)$ must be a Gaussian distribution.
   We will denote the mean of this belief by $mu_0$ and the covariance by $Sigma_0$:
 	$ "bel"(x_0)=p(x_0)= det(2pi Sigma_0)^(-1/2) dot exp(-1/2 (x_0 - mu_0)^T Sigma_0^(-1) (x_0 - mu_0)) $
 These three assumptions are sufficient to ensure that the posterior $"bel"(x_t)$ is always a Gaussian, for any point in time $t$. The proof is not trivial and will not be discussed here.
@@ -359,139 +365,135 @@ In many applications, such as the robot mapping applications, the measurement sp
 6. The robot receives a second measurement illustrated by the red Gaussian in @fig:kalman_filter_1d_example(e), which leads to the posterior shown in bold in @fig:kalman_filter_1d_example(f). 
 
 As this example illustrates, the Kalman filter alternates a measurement update step (lines 5-7), in which sensor data is integrated into the present belief, with a prediction step (or control update step), which modifies the belief in accordance to an action. The update step decreases and the prediction step increases uncertainty in the robot’s belief.
-// 1D Gaussian PDF
-#let gaussian(x, mu, var) = {
-  1 / calc.sqrt(2 * calc.pi * var) * calc.exp(-((x - mu) * (x - mu)) / (2 * var))
-}
-
-// High-contrast, colorblind-friendly palette
-#let col-belief      = rgb("#005AB5") // Vivid blue: active / resulting belief
-#let col-measurement = rgb("#DC3220") // Vermilion red: new measurement
-#let col-prior       = rgb("#7A869A") // Muted slate: prior belief
-#let col-prior-meas  = rgb("#E07A5F") // Soft coral (dashed): prior measurement
-
-#let st-belief      = (paint: col-belief, thickness: 1.6pt)
-#let st-measurement = (paint: col-measurement, thickness: 1.6pt)
-#let st-prior       = (paint: col-prior, thickness: 1.0pt)
-#let st-prior-meas  = (paint: col-prior-meas, thickness: 1.0pt, dash: "dashed")
-
-// Helper for a single subplot panel
-#let kf-panel(label, curves) = {
-  grid(
-    columns: (auto, 1fr),
-    column-gutter: 4pt,
-    align: (top, top),
-    text(weight: "bold", size: 9.5pt)[#label],
-    {
-      set text(size: 6.5pt)
-      cetz.canvas({
-        plot.plot(
-          size: (4.9, 3.35),
-          x-min: 0,
-          x-max: 30,
-          y-min: 0,
-          y-max: 0.25,
-          x-tick-step: 5,
-          y-tick-step: 0.05,
-          x-label: none,
-          y-label: none,
-          {
-            for c in curves {
-              plot.add(
-                domain: (0, 30),
-                samples: 200,
-                style: (stroke: c.stroke),
-                x => gaussian(x, c.mu, c.var),
-              )
-            }
-          },
-        )
-      })
-    },
-  )
-}
-
-// Exact 1D Kalman filter parameters matching the original figure
-#let mu0 = 8.0
-#let var0 = 16.0
-
-#let z1 = 6.0
-#let var-z1 = 4.0
-
-#let k1 = var0 / (var0 + var-z1) // 0.8
-#let mu1 = mu0 + k1 * (z1 - mu0) // 6.4
-#let var1 = (1 - k1) * var0 // 3.2
-
-#let u = 15.0
-#let var-u = 9.0
-#let mu2-pred = mu1 + u // 21.4
-#let var2-pred = var1 + var-u // 12.2
-
-#let z2 = 25.0
-#let var-z2 = 9.0
-#let k2 = var2-pred / (var2-pred + var-z2) // ~0.5755
-#let mu2 = mu2-pred + k2 * (z2 - mu2-pred) // ~23.4717
-#let var2 = (1 - k2) * var2-pred // ~5.1792
-
-// Legend swatch helper
-#let swatch(stroke-style, label) = box[
-  #box(width: 14pt, height: 6pt, baseline: 1pt, line(length: 14pt, stroke: stroke-style))
-  #h(3pt)#label
-]
-
-#figure(
-  block(width: 13.4cm)[
-    // Compact color legend above the grid
-    #align(center)[
-      #set text(size: 8pt)
-      #swatch(st-belief)[Active / updated belief]
-      #h(10pt)
-      #swatch(st-measurement)[New measurement]
-      #h(10pt)
-      #swatch(st-prior)[Prior belief]
-      #h(10pt)
-      #swatch(st-prior-meas)[Prior measurement]
-    ]
-    #v(4pt)
-    #grid(
-      columns: (1fr, 1fr),
-      column-gutter: 18pt,
-      row-gutter: 12pt,
-      // (a) Initial belief
-      kf-panel("(a)", (
-        (mu: mu0, var: var0, stroke: st-belief),
-      )),
-      // (b) Measurement with associated uncertainty
-      kf-panel("(b)", (
-        (mu: mu0, var: var0, stroke: st-prior),
-        (mu: z1, var: var-z1, stroke: st-measurement),
-      )),
-      // (c) Belief after integrating the measurement
-      kf-panel("(c)", (
-        (mu: mu0, var: var0, stroke: st-prior),
-        (mu: z1, var: var-z1, stroke: st-prior-meas),
-        (mu: mu1, var: var1, stroke: st-belief),
-      )),
-      // (d) Belief after motion to the right
-      kf-panel("(d)", (
-        (mu: mu1, var: var1, stroke: st-prior),
-        (mu: mu2-pred, var: var2-pred, stroke: st-belief),
-      )),
-      // (e) New measurement with associated uncertainty
-      kf-panel("(e)", (
-        (mu: mu2-pred, var: var2-pred, stroke: st-prior),
-        (mu: z2, var: var-z2, stroke: st-measurement),
-      )),
-      // (f) Resulting belief
-      kf-panel("(f)", (
-        (mu: mu2-pred, var: var2-pred, stroke: st-prior),
-        (mu: z2, var: var-z2, stroke: st-prior-meas),
-        (mu: mu2, var: var2, stroke: st-belief),
-      )),
-    )
-  ],
-  caption: [
-    Illustration of Kalman filters: *(a)* initial belief (blue), *(b)* a measurement (red) with the associated uncertainty alongside the prior belief (gray), *(c)* belief after integrating the measurement into the belief using the Kalman filter algorithm (blue), *(d)* belief after motion to the right (blue), which introduces uncertainty, *(e)* a new measurement (red) with associated uncertainty, and *(f)* the resulting belief (blue).
-  ],
-)<fig:kalman_filter_1d_example>
+#fig-kalman-filter() <fig:kalman_filter_1d_example>
 === The extended Kalman filter
+The assumptions that observations are linear functions of the state and that the next state is a linear function of the previous state are crucial for the correctness of the Kalman filter.
+The observation that any linear transformation
+of a Gaussian random variable results in another Gaussian random variable played an important role in the derivation of the Kalman filter algorithm.
+The efficiency of the Kalman filter is then due to the fact that the parameters of the resulting Gaussian can be computed in closed form.
+
+Throughout this and the following chapters, we will illustrate properties of different density representations using the transformation of a one-dimensional Gaussian random variable. 
+
+@fig:gaussian_transform(a) shows the *linear* transformation of such variable. 
+The graph on the lower right shod ws the density of the random variable $X ~ N (x; mu, sigma^2)$. Let us assume
+that $X$ is passed through the linear function $y = a x + b$, shown in the upper right graph. The resulting random variable, $Y$ , is distributed according to a
+Gaussian with mean $a mu + b$ and variance $a^a sigma^2$, this gaussian is shown as an orange area in the upper left corner. 
+#fig-gaussian-transform()<fig:gaussian_transform>
+#note[Unfortunately, state transitions and measurements are rarely linear in practice.
+For example, a robot that moves with constant translational and rotational velocity typically moves on a circular trajectory, which cannot be described by linear state transitions.
+This observation, along with the assumption of unimodal beliefs, renders plain Kalman filters, as discussed so
+far, inapplicable to all but the most trivial robotics problems.]
+The *extended Kalman filter*, or *EKF*, relaxes the linearity assumption of the Kalman filter.
+
+Here the assumption is that the state transition probability and the measurement probabilities are governed by nonlinear functions $g$ and $h$, respectively:
+- $x_t = g(u_t, x_(t-1))$
+- $z_t = h(x_t) + delta_t$
+This model strictly generalizes the linear Gaussian model underlying Kalman filters, as postulated in @eq:LinearStateTransition and @eq:LinearMeasurement. 
+The function $g$ replaces the matrices $A_t$ and $B_t$ in @eq:LinearStateTransition, and the function $h$ replaces the matrix $C_t$ in @eq:LinearMeasurement. With arbitrary $h$ and $g$ the belief is no longer guaranteed to be Gaussian.
+In fact, performing the belief update exactly is usually impossible for nonlinear functions g and h, and the Bayes filter does not possess a closed-form solution.
+In figure @fig:gaussian_transform(b) we illustrate the effect of a nonlinear transformation on a Gaussian random variable. The upper right graph shows the nonlinear function $y = x^2$ and the lower right graph shows the density of the random variable $X ~ N (x; mu, sigma^2)$. The resulting random variable $Y$ is no longer Gaussian, as shown in the upper left graph.
+#note[Since this density cannot be computed in closed form, it was estimated by drawing 500,000 samples according to $p(x)$, passing them through the function $g$, and then histogramming over the range of $g$.]
+As can be seen, $Y $ is not a Gaussian because the non linearities in $g$ distort the density of $X$ in ways that destroy its Gaussian shape.
+
+The extended Kalman filter (EKF) calculates a *Gaussian approximation to the true belief*. The dashed curve in the upper left graph of @fig:gaussian_transform(b) shows the Gaussian approximation to the density of the random variable $Y$.
+Accordingly, EKFs represent the belief $"bel"(x_t)$ at time $t$ by a mean $mu_t$ and a
+covariance $Sigma_t$. Thus, the EKF inherits from the Kalman filter the basic belief representation, but it differs in that this belief is only approximate, not exact as was the case in Kalman filters. The goal of the EKF is thus shifted from
+computing the exact posterior to efficiently estimating its mean and covariance. However, since these statistics cannot be computed in closed form, the EKF has to resort to an additional approximation.
+==== Linearization trough Taylor expansion
+The key idea underlying the EKF approximation is called linearization. The basic idea is shown in @fig:ekf-linearization.
+Linearization approximates the nonlinear function $g$ by a linear function that is tangent to $g$ at the mean of the Gaussian (dashed line in the upper right graph).
+Projecting the Gaussian through this linear approximation results in a Gaussian density, as indicated by the dashed line in the upper left graph. The solid line in the upper left graph represents the mean and covariance of the Monte-Carlo approximation. 
+The mismatch between these two Gaussians indicates the error caused
+by the linear approximation of $g$.
+#note[The key advantage of the linearization, however, lies in its efficiency.]
+The Monte-Carlo estimate of the Gaussian was achieved by passing 500,000 points through $g$ followed by the computation of their mean and covariance.
+The linearization applied by the EKF, on the other hand, only requires determination of the linear approximation followed by the closed-form computation of the resulting Gaussian. 
+In fact, once $g$ is linearized, the mechanics of
+the EKF’s belief propagation are equivalent to those of the Kalman filter.
+
+This technique also is applied to the multiplication of Gaussians when a measurement function h is involved. Again, the EKF approximates $h$ by a linear function tangent to $h$, thereby retaining the Gaussian nature of the posterior belief.
+#fig-ekf-linearization()<fig:ekf-linearization>
+There are many techniques for linearizing nonlinear functions. EKFs
+utilize a method called (first order) Taylor expansion. Taylor expansion constructs a linear approximation to a function $g$ from $g$’s value and slope.
+
+The slope is given by the partial derivative
+$ g'(u_t,x_(t-1)) := (partial g(u_t,x_(t-1)))/(partial x_(t-1)) $
+Clearly, both the value of $g$ and its slope depend on the argument of $g$. 
+A logical choice for selecting the argument is to choose the state deemed most likely at the time of linearization. For Gaussians, the most likely state is the mean of the posterior $mu_(t-1)$. In other words, $g$ is approximated by its
+value at $mu_(t-1)$ (and at $u_t$), and the linear extrapolation is achieved by a term proportional to the gradient of $g$ at $mu_(t-1)$ and $u_t$:
+$ g(u_t, x_(t-1)) approx & 
+g(u_t,mu_(t-1)) + underbrace(g'(u_t,mu_(t-1)),=:G_t)(x_(t-1) - mu_(t-1)) \
+ = & g(u_t,mu_(t-1)) + G_t (x_(t-1) - mu_(t-1)) 
+$
+Which written as a Gaussian it expands to:
+$ 
+p(x_t | u_t, x_(t-1)) &approx  det(2pi R_t)^(-1/2)\ &dot exp{-1/2 [x_t - g(u_t,mu_(t-1)) - G_t (x_(t-1) - mu_(t-1))]^T \ & R_t^(-1) [x_t - g(u_t,mu_(t-1)) - G_t (x_(t-1) - mu_(t-1))]}
+$
+
+Notice that $G_t$ is a matrix of size $n times n$, with $n$ denoting the dimension of the state. This matrix is often called the *Jacobian*. The value of the Jacobian depends on $u_t$ and $mu_(t-1)$, hence it differs for different points in time.
+
+EKFs implement the exact same linearization for the measurement function $h$. Here the Taylor expansion is developed around $overline(mu)_t$, the state deemed most likely by the robot at the time it linearizes $h$:
+$  
+h(x_t) &approx h(overline(mu)_t) + underbrace(h'(overline(mu)_t),=:H_t)(x_t - overline(mu)_t) \
+&= h(overline(mu)_t) + H_t (x_t - overline(mu)_t)
+$
+With $h'(x_t)=(partial h(x_t))/(partial x_t)$ written as a Gaussian we have:
+$
+p(z_t | x_t) approx & det(2pi Q_t)^(-1/2) dot \ &exp{-1/2 [z_t - h(overline(mu)_t) - H_t (x_t - overline(mu)_t)]^T Q_t^(-1) [z_t - h(overline(mu)_t) - H_t (x_t - overline(mu)_t)]}
+$ 
+==== The algorithm
+#figure(
+pseudocode-list[
+	+ *Algorithm Extended_Kalman_filter*($mu_(t-1), Sigma_(t-1), u_t, z_t$):
+		+ $overline(mu)_t = g(u_t, mu_(t-1))$
+		+ $overline(Sigma)_t = G_t Sigma_(t-1) G_t^T + R_t$
+		+ $K_t = overline(Sigma)_t H_t^T (H_t overline(Sigma)_t H_t^T + Q_t)^(-1)$
+		+ $mu_t = overline(mu)_t + K_t (z_t - h(overline(mu)_t))$
+		+ $Sigma_t = (I - K_t H_t) overline(Sigma)_t$
+		+ *return* $mu_t,Sigma_t$
+],caption:"The extended Kalman filter algorithm for nonlinear state transitions and measurements") <alg:extended_kalman_filter>
+In many ways, this algorithm is similar to the Kalman filter algorithm. The most important differences are summarized by the following table:
+#table(
+	columns: (auto, auto, auto),
+  inset: 10pt,
+	align: horizon,
+	table.header([],[Kalman filter],[Extended Kalman filter]),
+	"state prediction (line 2)", $A_t mu_(t-1) + B_t u_t$, $g(u_t, mu_(t-1))$,
+	"measurement prediction (line 5)", $C_t overline(mu)_t$, $h(overline(mu)_t)$
+)
+That is, the linear predictions in Kalman filters are replaced by their nonlinear generalizations in EKFs. Moreover, EKFs use Jacobians $G_t$ and $H_t$ instead of the corresponding linear system matrices $A_t$, $B_t$, and $C_t$ in Kalman filters.
+The Jacobian $G_t$ corresponds to the matrices $A_t$ and $B_t$, and the Jacobian $H_t$ corresponds to $C_t$.
+==== Practical considerations
+The EKF has become just about the most popular tool for state estimation in robotics. Its strength lies in its simplicity and in its computational efficiency.
+Each update requires time $O(k^2.4 +n^2)$, where $k$ is the dimension of the measurement vector $z_t$, and $n$ is the
+dimension of the state vector $x_t$. Other algorithms, such as the particle filter discussed further below, may require time exponential in $n$.
+
+The EKF owes its computational efficiency to the fact that it represents the belief by a multivariate Gaussian distribution. A Gaussian is a unimodal distribution, which can be thought of as a single guess annotated with an uncertainty ellipse. In many practical problems, Gaussians are robust estimators.
+
+An important limitation of the EKF arises from the fact that it approximates state transitions and measurements using linear Taylor expansions. 
+#note[In most robotics problems, state transitions and measurements are nonlinear.]
+The goodness of the linear approximation applied by the EKF depends on two main factors: 
+1. The *degree of uncertainty*
+   
+	The two graphs in @fig:ekf-uncertainty illustrate the dependency on the uncertainty. Here, two Gaussian random variables are passed through the same nonlinear function. While both Gaussians have the same mean, the variable shown in (a) has a higher uncertainty than the one in (b). Since the Taylor expansion only depends on the mean, both Gaussians are passed through the same linear approximation.
+
+	The orange areas in the upper left plots of the two figures show the densities of the resulting random variable, computed by Monte-Carlo estimation. The density resulting from the wider Gaussian is far more distorted than the density resulting from the narrow, less uncertain Gaussian. The Gaussian approximations of these densities are given by the solid lines in the figures.
+
+	The dashed graphs show the Gaussians estimated by the linearization. A comparison to the Gaussians resulting from the Monte-Carlo approximations illustrates the fact that higher uncertainty typically results in less accurate estimates of the mean and covariance of the resulting random variable.
+2. The *degree of local nonlinearity* of the functions $g$ and $h$.
+	Look at @fig:ekf-nonlinearity, there are two Gaussians with the same variance passed through the same nonlinear function. In Panel (a), the mean of the Gaussian falls into a more nonlinear region of the function $g$ than in Panel (b). 
+	
+	The mismatch between the accurate Monte-Carlo estimate of the Gaussian (solid line, upper left) and the Gaussian resulting from linear approximation (dashed line) shows that higher nonlinearities result in larger approximation errors. The EKF Gaussian clearly underestimates the spread of the resulting density.
+
+Sometimes, one might want to pursue multiple distinct hypotheses. For example, a robot might have two distinct hypotheses as to where it is, but the arithmetic mean of these hypotheses is not a likely contender. Such situations require multi-modal representations for the posterior belief. EKFs, in the form described here, are incapable of representing such multimodal beliefs.
+A common extension of EKFs is to represent posteriors using *mixtures, or sums, of Gaussians*. 
+
+A mixture of Gaussians may be of the form
+$ 
+"bel"(x_t) = 1/(sum_l psi_(t,l)) sum_l psi_(t,l) det(2pi Sigma_(t,l))^(-1/2) dot exp{-1/2 (x_t - mu_(t,l))^T Sigma_(t,l)^(-1) (x_t - mu_(t,l))}
+$
+Where $psi_(t,l)$ are mixture parameters, with $psi_(t,l)>=0$.
+These parameters serve as weights of the mixture components. They are estimated from the likelihoods of the observations conditioned on the corresponding Gaussians.
+EKFs that utilize such mixture representations are called multi-hypothesis (extended) Kalman filters, or MHEKF.
+#fig-ekf-uncertainty()<fig:ekf-uncertainty>
+#fig-ekf-nonlinearity()<fig:ekf-nonlinearity>
