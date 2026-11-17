@@ -7,7 +7,9 @@
 #import "utils/fig34-helpers.typ": fig-ekf-linearization
 #import "utils/fig35-helper.typ": fig-ekf-uncertainty
 #import "utils/fig36-helper.typ": fig-ekf-nonlinearity
-
+#import "utils/fig37-helpers.typ": fig-ukf-linearization
+#import "utils/fig38-helpers.typ": fig-ukf-uncertainty
+#import "utils/fig39-helpers.typ": fig-ukf-nonlinearity
 Robotics is the science of perceiving and manipulating the physical world through computer-controlled devices. 
 Robotics systems are situated in the physical world, perceive information on their environments through sensors, and manipulate through physical forces.
 == Uncertainty in robotics
@@ -497,3 +499,179 @@ These parameters serve as weights of the mixture components. They are estimated 
 EKFs that utilize such mixture representations are called multi-hypothesis (extended) Kalman filters, or MHEKF.
 #fig-ekf-uncertainty()<fig:ekf-uncertainty>
 #fig-ekf-nonlinearity()<fig:ekf-nonlinearity>
+=== The unscented Kalman filter
+The Taylor series expansion applied by the EKF is only one way to linearize the transformation of a Gaussian.
+Two other approaches have often been found to yield *superior results*. One is known as moments matching (and the resulting filter is known as *assumed density filter*, or ADF), in which the linearization is calculated in a way that preserves the true mean and the true covariance of the posterior distribution (which is not the case for EKFs.
+Another linearization method is applied by the *unscented Kalman filter*, or UKF, which performs a stochastic linearization through the use of a weighted statistical linear regression process.
+==== Linearization Via the Unscented Transform
+Figure @fig:ukf-linearization illustrates the linearization applied by the UKF, called the *unscented transform*. 
+
+Instead of approximating the function $g$ by a Taylor series
+expansion, the UKF deterministically extracts so-called *sigma points* from the Gaussian and passes these through $g$.
+
+In the general case, these sigma points
+are located at the mean and symmetrically along the main axes of the covariance (two per dimension). 
+
+#fig-ukf-linearization()<fig:ukf-linearization>
+
+
+For an n-dimensional Gaussian with mean $mu$ and covariance $Sigma$, the resulting $2n + 1$ sigma points $cal(X)^[i]$ are chosen according to
+the following rule:
+$
+cal(X)^[0] &= mu \ 
+cal(X)^[i] &= mu + (sqrt((n + lambda) Sigma))_i quad  "for" i = 1, dots, n \
+cal(X)^[i] &= mu - (sqrt((n + lambda) Sigma))_(i-n) quad  "for" i = n + 1, dots, 2n
+
+$<eq:ukf-sigma-points>
+Here $lambda = alpha 2(n+kappa)-n$, with $alpha$ and $kappa$ being scaling parameters that determine how far the sigma points are spread from the mean. Each sigma point $cal(X)^[i]$
+has two weights associated with it. One weight, $w^[i]_m$
+, is used when computing the mean, the other weight, $w^[i]_c$ , is used when recovering the covariance of the Gaussian.
+$ 
+w^[0]_m &= lambda/(n + lambda) \
+w^[0]_c &= lambda/(n + lambda) + (1 - alpha^2 + beta) \
+w^[i]_m &= w^[i]_c = 1/(2(n + lambda)) quad  "for" i = 1, dots, 2n
+$
+The parameter $beta$ can be chosen to encode additional (higher order) knowledge about the distribution underlying the Gaussian representation. If the distribution is an exact Gaussian, then $beta = 2$ is the optimal choice.
+
+The sigma points are then passed through the function $g$, thereby probing how $g$ changes the shape of the Gaussian.
+$
+cal(Y)^[i] = g(cal(X)^[i])
+$
+The parameters $(mu′ Sigma′)$ of the resulting Gaussian are extracted from the mapped sigma points $cal(Y)^[i]$ according to
+$
+mu' &= sum_(i=0)^(2n) w_m^[i] cal(Y)^[i] \
+Sigma' &= sum_(i=0)^(2n) w_c^[i] (cal(Y)^[i] - mu')(cal(Y)^[i] - mu')^T
+$
+@fig:ukf-uncertainty illustrates the dependency of the unscented transform on the uncertainty of the original Gaussian. For comparison, the results using the EKF Taylor series expansion are plotted alongside the UKF results.
+
+@fig:ukf-nonlinearity  shows an additional comparison between UKF and EKF approximation, here in dependency of the local nonlinearity of the function $g$. As can be seen, the unscented transform is more accurate than the first order
+Taylor series expansion applied by the EKF. In fact, it can be shown that the unscented transform is accurate in the first two terms of the Taylor expansion, while the EKF captures only the first order term. 
+#fig-ukf-uncertainty()<fig:ukf-uncertainty>
+#fig-ukf-nonlinearity()<fig:ukf-nonlinearity>
+==== The algorithm
+
+#figure(
+pseudocode-list[
+  + *Algorithm Unscented_Kalman_filter*($mu_(t-1), Sigma_(t-1), u_t, z_t$):
+    + $cal(X)_(t-1) = (mu_(t-1), mu_(t-1) + gamma sqrt(Sigma_(t-1)), mu_(t-1) - gamma sqrt(Sigma_(t-1)))$
+    + $cal(X)_t^[i] = g(u_t, cal(X)_(t-1)^[i])$
+    + $overline(mu)_t = sum_(i=0)^(2n) w_m^[i] cal(X)_t^[i]$
+    + $overline(Sigma)_t = sum_(i=0)^(2n) w_c^[i] (cal(X)_t^[i] - overline(mu)_t) (cal(X)_t^[i] - overline(mu)_t)^T + R_t$
+    + $overline(cal(X))_t = (overline(mu)_t, overline(mu)_t + gamma sqrt(overline(Sigma)_t), overline(mu)_t - gamma sqrt(overline(Sigma)_t))$
+    + $overline(cal(Z))_t = h(overline(cal(X))_t)$
+    + $hat(z)_t = sum_(i=0)^(2n) w_m^[i] overline(cal(Z))_t^[i]$
+    + $S_t = sum_(i=0)^(2n) w_c^[i] (overline(cal(Z))_t^[i] - hat(z)_t) (overline(cal(Z))_t^[i] - hat(z)_t)^T + Q_t$
+    + $overline(Sigma)^(x,z)_t = sum_(i=0)^(2n) w_c^[i] (overline(cal(X))_t^[i] - overline(mu)_t) (overline(cal(Z))_t^[i] - hat(z)_t)^T$
+    + $K_t = overline(Sigma)^(x,z)_t S_t^(-1)$
+    + $mu_t = overline(mu)_t + K_t (z_t - hat(z)_t)$
+    + $Sigma_t = overline(Sigma)_t - K_t S_t K_t^T$
+    + *return* $mu_t,Sigma_t$
+],caption:"The unscented Kalman filter algorithm") <alg:unscented_kalman_filter>
+The UKF algorithm utilizing the unscented transform is presented in @alg:unscented_kalman_filter.
+The input and output are identical to the EKF algorithm. 
+- Line 2 determines the sigma points of the previous belief using @eq:ukf-sigma-points, with $gamma$ short for $sqrt(n) + lambda$. 
+- These points are propagated through the noise-free state prediction in line 3.
+- The predicted mean and variance are then computed from the resulting sigma points (lines 4 and 5). Rt in line 5 is added to the sigma point covariance in order to model the additional prediction noise uncertainty (compare to line 3 of the EKF algorithm @alg:kalman_filter).
+	#note[The prediction noise Rt is assumed to be additive.]
+- A new set of sigma points is extracted from the predicted Gaussian in line 6. This sigma point set $overline(cal(X))_t$ now captures the overall uncertainty after the prediction step.
+- In line 7, a predicted observation is computed for each sigma point. The resulting observation sigma points $overline(cal(Z))_t$ are used to compute the predicted observation $hat(z)_t$ and its uncertainty, $S_t$. The matrix 	$Q_t$ is the covariance matrix of the additive measurement noise. #note[Note that $S_t$ represents the same uncertainty as $H_t overline(Sigma)_t H_t^T + Q_t$ in line 4 of the EKF algorithm in @alg:extended_kalman_filter.]
+- Line 10 determines the cross-covariance between state and observation, which is then used in line 11 to compute the Kalman gain $K_t$. The cross-covariance $overline(Sigma)^(x,z)_t$ corresponds to the term $overline(Sigma)_t H_t^T$ in line 4 of the EKF algorithm. 
+- With this in mind it is straightforward to show that the estimation update performed in lines 12 and 13 is of equivalent form to the update performed by the EKF algorithm.
+
+The asymptotic complexity of the UKF algorithm is the same as for the EKF. In practice, the EKF is often slightly faster than the UKF. The UKF is still highly efficient, even with this slowdown by a constant factor. Furthermore, the UKF inherits the benefits of the unscented transform for linearization.
+- For purely linear systems, it can be shown that the estimates generated by the UKF are identical to those generated by the Kalman filter.
+- For non linear systems the UKF produces equal or better results than the EKF, where the improvement over the EKF depends on the nonlinearities and spread of the prior state uncertainty.
+#note[In many practical applications, the difference
+between EKF and UKF is negligible.]
+Another advantage of the UKF is the fact that it does not require the computation of Jacobians, which are *difficult to determine in some domains*. 
+#note[The UKF is thus often referred to as a *derivative-free* filter.]
+=== The information filter
+The dual of the Kalman filter is the information filter, or IF. Just like the KF and its nonlinear versions, the EKF and the UKF, the information filter represents the belief by a Gaussian.
+Thus, the standard information filter is subject to the same assumptions underlying the Kalman filter. The key difference between the KF and the IF arises from the way the Gaussian belief is represented.
+
+Whereas in the Kalman filter family of algorithms, Gaussians are represented by their moments (mean, covariance), information filters represent Gaussians in their canonical parameterization, which is comprised of an information matrix and an information vector. 
+The difference in parameterization leads to different update equations. In particular, what is computationally complex in one parameterization happens to be simple in the other (and vice versa). The canonical and the moments parameterizations are often considered dual to each other, and thus are the IF and the KF.
+==== Canonical Parameterization
+#definition[Canonical parameterization of a Gaussian][
+	The canonical parameterization of a multivariate Gaussian is given by a matrix $Omega$ and a vector $xi$. The matrix $Omega$ is called the *information matrix*, (or sometimes the *precision matrix*) and the vector $xi$ is called the *information vector*. The information matrix is the inverse of the covariance matrix $Omega=Sigma^(-1)$, and the information vector is the product of the information matrix and the mean $xi = Omega mu$.
+]
+It is easy to see that $Omega$ and $xi$ are a complete parameterization of a Gaussian. In particular, the mean and covariance of the Gaussian can easily be obtained from the canonical parameterization by the inverse:
+$
+Sigma = Omega^(-1) \
+mu = Omega^-1 xi
+$
+The canonical parameterization is often derived by multiplying out the exponent of a Gaussian.
+In @eq:MultivariateNormalDistribution we said that 
+$ p(x) = det(2pi Sigma)^(-1/2) exp( -1/2 (x - mu)^T Sigma^(-1) (x - mu) ) $
+We can separate the exponent into two terms, one that does not depend on $x$ and one that does:
+$ p(x) = underbrace(det(2pi Sigma)^(-1/2) exp(-1/2 mu^T Sigma^(-1) mu),"constant term") exp( -1/2 x^T Sigma^(-1) x + x^T Sigma^(-1) mu ) $
+We can include the constant term into the normalization factor, and rewrite the Gaussian in canonical form:
+$
+p(x)= eta exp(-1/2 x^T Sigma^(-1) x + x^T Sigma^(-1) mu) = eta exp(-1/2 x^T Omega x + x^T xi)
+$
+In many ways, the canonical parameterization is more elegant than the moments parameterization. 
+
+In particular, the negative logarithm of the Gaussian is a quadratic function in $x$, with the canonical parameters $Omega$ and $xi$:
+$
+-log p(x) = 1/2 x^T Omega x - x^T xi + "constant"
+$
+
+Here “constant” is a constant. The reader may notice that we cannot use the symbol $eta$ to denote this constant, since negative logarithms of probabilities do not normalize to 1. The negative logarithm of our distribution $p(x)$ is
+quadratic in $x$, with the quadratic term parameterized by $Omega$ and the linear term by $xi$. In fact, for Gaussians, $Omega$ must be positive semidefinite, hence $- log p(x)$ is a quadratic distance function with mean $mu = Omega^(-1) xi$.
+#definition[Mahalanobis distance][
+The matrix $Omega$ determines the rate at which the distance function increases in the different dimensions of the variable $x$. A quadratic distance that is weighted by a matrix $Omega$ is called a *Mahalanobis distance*.]
+==== The algorithm
+#figure(
+pseudocode-list[
+	+ *Algorithm Information_filter*($xi_(t-1), Omega_(t-1), u_t, z_t$):
+		+ $overline(Omega)_t = (A_t Omega^(-1)_(t-1) A_t^T + R_t)^-1$
+		+ $overline(xi)_t = overline(Omega)_t (A_t Omega^(-1)_(t-1) xi_(t-1) + B_t u_t)$
+		+ $Omega_t = C_t^T Q_t^(-1) C_t + overline(Omega)_t$
+
+		+ $xi_t =  C_t^T Q_t^(-1) z_t + overline(xi)_t$
+		+ *return* $xi_t, Omega_t$
+],caption:"The information filter algorithm for linear Gaussian state transitions and measurements") <alg:information_filter>
+Its input is a Gaussian in its canonical parameterization $xi_(t-1)$ and $Omega_(t-1)$, representing the belief at time $t - 1$. Just like all Bayes filters, its input includes the control $u_t$ and the measurement $z_t$. The output are the parameters $xi_t$ and $Omega_t$ of the updated Gaussian.
+The update involves matrices $A_t$, $B_t$, $C_t$, $R_t$, and $Q_t$. Those were defined in @eq:LinearStateTransition and @eq:LinearMeasurement, and are identical to the matrices used in the Kalman filter algorithm.
+Here $R_t$ and $Q_t$ are the covariances of the zero-mean noise variables $epsilon_t$ and$delta_t$, respectively.
+
+Just like the Kalman filter, the information filter is updated in two steps, a prediction step and a measurement update step.
+- The prediction step is implemented in lines 2 and 3. The parameters $overline(xi)_t	$ and $overline(Omega)_t$ describe the Gaussian belief over $x_t$ after incorporating the control $u_t$, but before in corporating the measurement $z_t$.
+- The latter is done through lines 4 and 5. Here the belief is updated based on the measurement $z_t$.
+
+#note[These two update steps can be vastly different in complexity, especially if the state space possesses many dimensions.]
+- The prediction step involves the inversion of two matrices of the size $n times n$, where $n$ is the dimension of the state space. In Kalman filters, the update step is additive and requires at most $O(n^2)$ time; it requires less time if only a subset of variables is affected by a control, or if variables transition independently of each other. 
+- These roles are reversed for the measurement update step. Measurement updates are additive in the information filter. They require at most $O(n^2)$ time, and they are even more efficient if measurements carry only information about a subset of all state variables at a time. 
+- The measurement update is the difficult step in Kalman filters. It requires matrix inversion whose worst case complexity is $O(n^2.4)$. 
+This illustrates the dual character of Kalman and information filters.
+==== The extended information filter
+The extended information filter, or EIF, extends the information filter to the nonlinear case, very much in the same way the EKF is the non-linear extension of the Kalman filter.
+#figure(
+	pseudocode-list[
+		+ *Algorithm Extended_information_filter*($xi_(t-1), Omega_(t-1), u_t, z_t$):
+		+ $mu_(t-1) = Omega_(t-1)^(-1) xi_(t-1)$
+		+ $overline(Omega)_t = (G_t Omega^(-1)_(t-1) G_t^T + R_t)^(-1)$
+		+ $overline(xi)_t = overline(Omega)_t g(u_t,mu_(t-1))$
+		+ $overline(mu)_t = g(u_t,mu_(t-1))$
+		+ $Omega_t = overline(Omega)_t + H_t^T Q_t^(-1) H_t$
+		+ $xi_t = overline(xi)_t + H_t^T Q_t^(-1) (z_t - h(overline(mu)_t) + H_t overline(mu)_t)$
+		+ *return* $xi_t, Omega_t$
+	]
+)
+The prediction is realized in lines 2 through 4, and the measurement update in lines 5 through 7.
+These update equations are largely analog to the linear information filter, with the functions $g$ and $h$ (and their Jacobian $G_t$ and $H_t$) replacing the parameters of the linear model $A_t$, $B_t$, and $C_t$. As before, $g$ and $h$ specify the nonlinear state transition function and measurement function, respectively. 
+
+#note[Unfortunately, both g and h require a state as an input. This mandates the recovery of a state estimate $mu$ from the canonical parameters.]
+The recovery takes place in line 2, in which the state $mu_(t-1)$ is calculated from $Omega_(t-1)$ and $xi_(t-1)$ in the obvious way. 
+Line 5 computes the state $overline(mu)_t$ using the equation familiar from the EKF.
+==== Practical considerations
+When applied to robotics problems, the information filter possesses several advantages over the Kalman filter.
+
+- Representing global uncertainty is simple in the information filter: simply set $Omega = 0$. When using moments, such global uncertainty amounts to a covariance of infinite magnitude. This is especially problematic when sensor measurements carry information about a strict subset of all state variables, a situation often encountered in robotics. Special provisions have to be made to handle such situations in EKFs. 
+- The information filter tends to be numerically more stable than the Kalman filter in many of the applications that will be discussed later.
+- The information filter and several extensions enable a robot to integrate information without immediately resolving it into probabilities. This can be of great advantage in complex estimation problems, involving hundreds or even millions of variables. For such large problems, the integration á la Kalman filter induces severe computational problems, since any new piece of information requires propagation through a large system of variables. The information filter, with appropriate modification, can side-step this issue by simply adding the new information locally into the system. However, this is not a property yet of the simple information filter discussed here.
+- Multi-robot problems often involve the integration of sensor data collected decentrally. Such integration is commonly performed through Bayes rule. When represented in logarithmic form, Bayes rule becomes an addition. As noted above, the canonical parameters of information filters represent a probability in logarithmic form. Thus, information integration is achieved by summing up information from multiple robots. Addition is commutative. Because of this, information filters can often integrate information in arbitrary order, with arbitrary delays, and in a completely decentralized manner. While the same is possible using the moments parameterization—after all, they represent the same information, the necessary overhead for doing so is much higher. Despite this advantage, the use of information filters in multi-robot systems remains largely under explored. 
+
+The advantages of the information filter are offset by *important limitations*. A primary disadvantage of the extended information filter is the need to recover a state estimate in the update step, when applied to nonlinear systems. This step, if implemented as stated here, requires the inversion of the information matrix. Further matrix inversions are required for the prediction step of the information filter. In many robotics problems, the EKF does not involve the inversion of matrices of comparable size. For high dimensional state spaces, the information filter is generally believed to be computation ally inferior to the Kalman filter. In fact, this is one of the reasons why the EKF has been vastly more popular than the extended information filter.
+
+These limitations do not necessarily apply to problems in which the information matrix possesses structure. In many robotics problems, the interaction of state variables is local; as a result, the *information matrix may be sparse*. #note[Such sparseness does not translate to sparseness of the covariance]
