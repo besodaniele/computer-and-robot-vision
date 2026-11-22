@@ -21,6 +21,7 @@
 })
 
 #show figure.caption: it => {
+  set text(size: 9pt)
   let pattern = "^[^:]+" + sym.space.nobreak + "[\d.]+"
   show regex(pattern): strong
   // show regex(pattern): set text(weight: "bold")

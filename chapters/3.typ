@@ -10,6 +10,8 @@
 #import "utils/fig37-helpers.typ": fig-ukf-linearization
 #import "utils/fig38-helpers.typ": fig-ukf-uncertainty
 #import "utils/fig39-helpers.typ": fig-ukf-nonlinearity
+#import "utils/fig41-helpers.typ": fig-histogram-transform
+#import "utils/fig43-helpers.typ": fig-particle-representation
 Robotics is the science of perceiving and manipulating the physical world through computer-controlled devices. 
 Robotics systems are situated in the physical world, perceive information on their environments through sensors, and manipulate through physical forces.
 == Uncertainty in robotics
@@ -97,8 +99,8 @@ This enables them to scale much better to complex real-world environments than p
 #note[Certain probabilistic algorithms are currently the only known working solutions to hard robotic estimation problems, such as the localization problem]
 In comparison to traditional model-based robotic techniques, probabilistic
 algorithms have* weaker requirements on*: 
-- *the accuracy* of the robot’s models, thereby relieving the programmer from the insurmountable burden to come up with accurate models. 
-- *the accuracy* of robotic sensors than those made by many reactive techniques, whose sole control input is the momentary sensor input. 
+- *the accuracy* of the robot’s *models*, thereby relieving the programmer from the insurmountable burden to come up with accurate models. 
+- *the accuracy* of robotic *sensors* than those made by many reactive techniques, whose sole control input is the momentary sensor input. 
 Viewed probabilistically, the robot learning problem is a long-term estimation problem.
 Thus, probabilistic algorithms provide a sound methodology for many flavors of robot learning.
 
@@ -131,7 +133,8 @@ The robot can also influence its environment through its actuators. The effect o
 The state also includes variables regarding the robot itself, such as its pose, velocity, whether or not its sensors are functioning correctly, and so on.
 The state at time $t$ will be denoted by $x_t$. Typical state variables used throughout this book are:
 - The robot *pose*, which comprises its location and orientation relative to a global coordinate frame. Rigid mobile robots possess six such state variables, three for their Cartesian coordinates, and three for their angular orientation (pitch, roll, and yaw). For rigid mobile robots confined to planar environments, the pose is usually given by three variables, its two location coordinates in the plane and its heading direction (yaw).
-- In robot manipulation, the pose includes variables for the *configuration* of the robot’s *actuators*. For example, they might include the joint angles of revolute joints. Each degree of freedom in a robot arm is characterized by a one-dimensional configuration at any point in time, which is part of the kinematic state of the robot. The robot configuration is often referred to as *kinematic state*.
+- In robot manipulation, the pose includes variables for the *configuration* of the robot’s *actuators*. 
+  #example[For example, they might include the joint angles of revolute joints. Each degree of freedom in a robot arm is characterized by a one-dimensional configuration at any point in time, which is part of the kinematic state of the robot. The robot configuration is often referred to as *kinematic state*.]
 - The robot *velocity* and the *velocities of its joints* are commonly referred to as *dynamic state*. A rigid robot moving through space is characterized by up to six velocity variables, one for each pose variables. Dynamic state will play only a minor role in the topics covered here.
 - The *location and features of surrounding objects* in the environment are also state variables.  For many of the problems studied in this book, the location of objects in the environment will be static. In some problems, objects will assume the form of *landmarks*, which are distinct, stationary features of the environment that can be recognized reliably.
 - The location and velocities of moving objects and people are also potential state variables. Often, the robot is not the only moving actor in its environment. Other moving entities possess their own kinematic and dynamic state.
@@ -150,8 +153,9 @@ There are two fundamental types of interactions between a robot and its environm
 - The robot can influence the state of its environment through its actuators.
 - It can gather information about the state through its sensors.
 #definition[Environment sensor measurement][
-	Perception is the process by which the robot uses its sensors to obtain information about the state of its environment. For example, a robot might take a camera image, a range scan, or query its tactile sensors to receive information about the state of the environment. The result of such a perceptual interaction will be called *measurement*, although we will sometimes also call it observation or percept. 
+	Perception is the process by which the robot uses its sensors to obtain information about the state of its environment. The result of such a perceptual interaction will be called *measurement*, although we will sometimes also call it observation or percept. 
 ]
+#example[For example, a robot might take a camera image, a range scan, or query its tactile sensors to receive information about the state of the environment.]
 Typically, sensor measurements arrive with some delay. Hence they provide information about the state a few moments ago.
 #definition[Control actions][ Actions that change the state of the world. They do so by actively asserting forces on the robot’s environment. 
 ]
@@ -178,7 +182,7 @@ Hence, the probabilistic law characterizing the evolution of state might be give
 The property expressed by this equality is an example of conditional independence. It states that certain variables are independent of others if one knows the values of a third group of variables, the *conditioning variables*. This condition is one of the main reason why the algorithms discussed are computationally tractable.
 
 One might also want to model the process by which *measurements are
-being generated*. Again, if xt is complete, we have an important conditional independence:
+being generated*. Again, if $x_t$ is complete, we have an important conditional independence:
 $ p(z_t | x_(0:t), z_(1:t-1), u_(1:t)) = p(z_t | x_(t)) $
 In other words, the state $x_t$ is sufficient to predict the (potentially noisy) measurement $z_t$.
 #remark[
@@ -193,7 +197,7 @@ But what are the probabilities that we discussed?
   It also may not depend on the time index $t$, in which case it shall be written as $p(z | x)$. The measurement probability specifies the probabilistic law according to which measurements $z$ are generated from the environment state $x$. It is appropriate to think of measurements as noisy projections of the state.
 The state transition probability and the measurement probability together describe the dynamical stochastic system of the robot and its environment.
 #figure(image("../figures/3/HMM.png",width:80%),caption:"Probabilistic generative laws")<fig:HMM>
-@fig:HMM shows the evolution of states and measurements, dened
+@fig:HMM shows the evolution of states and measurements, defined
 through those probabilities. The state at time $t$ is stochastically dependent on the state at time $t - 1$ and the control $u_t$. The measurement $z_t$ depends
 stochastically on the state at time $t$. Such a temporal generative model is also known as *hidden Markov model* (HMM) or *dynamic Bayes network* (DBN).
 ==== Belief Distributions
@@ -209,25 +213,27 @@ $ "bel"(x_t) = p(x_t | z_(1:t), u_(1:t)) $
 This posterior is the probability distribution over the state $x_t $at time $t$, conditioned on all past measurements $z_(1:t)$ and all past controls $u_(1:t)$. This measurement is done after reading $z_t$. We can also calculate belief before (this is sometimes useful), which we will denote
 $ overline("bel")(x_t) = p(x_t | z_(1:t-1), u_(1:t)) $
 This probability distribution is often referred to as *prediction* in the context of probabilistic filtering. This terminology reflects the fact that $overline("bel")(x_t)$ predicts the state at time $t$ based on the previous state posterior, before incorporating the measurement at time $t$. Calculating $"bel"(x_t)$ from $overline("bel")(x_t)$ is called *correction or the measurement update*.
-=== Bayes filter algorithm
+=== Bayes filter algorithm <sec:bayes_filter>
 The most general algorithm for calculating beliefs is given by the Bayes filter algorithm. This algorithm calculates the belief distribution $"bel"$ from measurement and control data.
 #figure(
-pseudocode-list[
+pseudocode-list(line-gap: 1em)[
 + *Algorithm Bayes_filter*($"bel"(x_(t-1)), u_t, z_t$):
-		+ $forall x_t$ *do*:
-			+ $overline("bel")(x_t) = integral p(x_t | x_(t-1), u_t) dot "bel"(x_(t-1)) d x_(t-1)$
-			+ $"bel"(x_t) = eta dot p(z_t | x_t) dot overline("bel")(x_t)$
-		+ *return* $"bel"(x_t)$
+	+ $forall x_t$ *do*:
+		+ $overline("bel")(x_t) = integral p(x_t | x_(t-1), u_t) dot "bel"(x_(t-1)) d x_(t-1)$
+		+ $"bel"(x_t) = eta dot p(z_t | x_t) dot overline("bel")(x_t)$
+	+ *return* $"bel"(x_t)$
 ],caption:"The general algorithm for bayes filter")<alg:bayes_filter>
 The algorithm showns in @alg:bayes_filter is recursive, $"bel"(x_t)$ at time $t$ is calculated from the belief $"bel"(x_(t-1))$ at time $t-1$. Its input is the previous belief $"bel"(x_(t-1))$, the most recent control $u_t$ and the measurement $z_t$, and its output is the new belief $"bel"(x_t)$.
 The Bayes filter algorithm possesses two essential steps:
+
 - *Prediction*:
   
   In line 3 it processes the control $u_t$.
-  It does so by calculating a belief over the state $x_t$ based on the prior belief over state $x_(t-1)$ and the control $u_t$. In particular, the belief $overline("bel")(x_t)$ that the robot assigns to state $x_t$ is obtained by the integral (sum) of the product of two distributions: the prior assigned to $x_(t-1)$, and the probability that control $u_t$ induces a transition from $x_(t-1)$ to $x_t$.
+  It does so by calculating a belief over the state $x_t$ based on the prior belief over state $x_(t-1)$ and the control $u_t$. In particular, the belief  $overline("bel")(x_t)$ that the robot assigns to state $x_t$ is obtained by the integral (sum) of the product of two distributions: the prior assigned to $x_(t-1)$, and the probability that control $u_t$ induces a transition from $x_(t-1)$ to $x_t$.
+
 - *Measurement update*:
   
-  In line 4, the Bayes filter algorithm multiplies the belief $"bel"(x_t)$ by the probability that the measurement $z_t$ may have been observed. It does so for each hypothetical posterior state $x_t$. As will become apparent further below when actually deriving the basic filter equations, the resulting product is generally not a probability. It may not integrate to 1. Hence, the result is normalized, by virtue of the normalization constant $eta$.
+  In line 4, the Bayes filter algorithm multiplies the belief $overline("bel")(x_t)$ by the probability that the measurement $z_t$ may have been observed. It does so for each hypothetical posterior state $x_t$. As will become apparent further below when actually deriving the basic filter equations, the resulting product is generally not a probability. It may not integrate to 1. Hence, the result is normalized, by virtue of the normalization constant $eta$.
 
 To compute the posterior belief recursively, the algorithm requires an initial belief $"bel"(x_0)$ at time $t = 0$ as boundary condition (base case of recursion).
 
@@ -324,14 +330,13 @@ Posteriors are Gaussian if the following three properties hold, in addition to t
 These three assumptions are sufficient to ensure that the posterior $"bel"(x_t)$ is always a Gaussian, for any point in time $t$. The proof is not trivial and will not be discussed here.
 ==== The algorithm
 #figure(
-pseudocode-list[
-  + *Algorithm Kalman_filter*($mu_(t-1), Sigma_(t-1), u_t, z_t$):
+pseudocode-list(line-gap: 1em)[
++ *Algorithm Kalman_filter*($mu_(t-1), Sigma_(t-1), u_t, z_t$):
 	+ $overline(mu)_t = A_t mu_(t-1) + B_t u_t$
 	+ $overline(Sigma)_t = A_t Sigma_(t-1) A_t^T + R_t$
 	+ $K_t = overline(Sigma)_t C_t^T (C_t overline(Sigma)_t C_t^T + Q_t)^(-1)$
 	+ $mu_t = overline(mu)_t + K_t (z_t - C_t overline(mu)_t)$
 	+ $Sigma_t = (I - K_t C_t) overline(Sigma)_t$
-
 	+ *return* $mu_t,Sigma_t$
 ],caption:"The Kalman filter algorithm for linear Gaussian state transitions and measurements") <alg:kalman_filter>
 Kalman filters represent the belief $"bel"(x_t)$ at time $t$ by the mean $mu_t$ and the covariance $Sigma_t$.
@@ -445,7 +450,7 @@ p(z_t | x_t) approx & det(2pi Q_t)^(-1/2) dot \ &exp{-1/2 [z_t - h(overline(mu)_
 $ 
 ==== The algorithm
 #figure(
-pseudocode-list[
+pseudocode-list(line-gap: 1em)[
 	+ *Algorithm Extended_Kalman_filter*($mu_(t-1), Sigma_(t-1), u_t, z_t$):
 		+ $overline(mu)_t = g(u_t, mu_(t-1))$
 		+ $overline(Sigma)_t = G_t Sigma_(t-1) G_t^T + R_t$
@@ -551,7 +556,7 @@ Taylor series expansion applied by the EKF. In fact, it can be shown that the un
 ==== The algorithm
 
 #figure(
-pseudocode-list[
+pseudocode-list(line-gap: 1em)[
   + *Algorithm Unscented_Kalman_filter*($mu_(t-1), Sigma_(t-1), u_t, z_t$):
     + $cal(X)_(t-1) = (mu_(t-1), mu_(t-1) + gamma sqrt(Sigma_(t-1)), mu_(t-1) - gamma sqrt(Sigma_(t-1)))$
     + $cal(X)_t^[i] = g(u_t, cal(X)_(t-1)^[i])$
@@ -622,7 +627,7 @@ quadratic in $x$, with the quadratic term parameterized by $Omega$ and the linea
 The matrix $Omega$ determines the rate at which the distance function increases in the different dimensions of the variable $x$. A quadratic distance that is weighted by a matrix $Omega$ is called a *Mahalanobis distance*.]
 ==== The algorithm
 #figure(
-pseudocode-list[
+pseudocode-list(line-gap: 1em)[
 	+ *Algorithm Information_filter*($xi_(t-1), Omega_(t-1), u_t, z_t$):
 		+ $overline(Omega)_t = (A_t Omega^(-1)_(t-1) A_t^T + R_t)^-1$
 		+ $overline(xi)_t = overline(Omega)_t (A_t Omega^(-1)_(t-1) xi_(t-1) + B_t u_t)$
@@ -647,8 +652,8 @@ This illustrates the dual character of Kalman and information filters.
 ==== The extended information filter
 The extended information filter, or EIF, extends the information filter to the nonlinear case, very much in the same way the EKF is the non-linear extension of the Kalman filter.
 #figure(
-	pseudocode-list[
-		+ *Algorithm Extended_information_filter*($xi_(t-1), Omega_(t-1), u_t, z_t$):
+	pseudocode-list(line-gap: 1em)[
+	+ *Algorithm Extended_information_filter*($xi_(t-1), Omega_(t-1), u_t, z_t$):
 		+ $mu_(t-1) = Omega_(t-1)^(-1) xi_(t-1)$
 		+ $overline(Omega)_t = (G_t Omega^(-1)_(t-1) G_t^T + R_t)^(-1)$
 		+ $overline(xi)_t = overline(Omega)_t g(u_t,mu_(t-1))$
@@ -675,3 +680,186 @@ When applied to robotics problems, the information filter possesses several adva
 The advantages of the information filter are offset by *important limitations*. A primary disadvantage of the extended information filter is the need to recover a state estimate in the update step, when applied to nonlinear systems. This step, if implemented as stated here, requires the inversion of the information matrix. Further matrix inversions are required for the prediction step of the information filter. In many robotics problems, the EKF does not involve the inversion of matrices of comparable size. For high dimensional state spaces, the information filter is generally believed to be computation ally inferior to the Kalman filter. In fact, this is one of the reasons why the EKF has been vastly more popular than the extended information filter.
 
 These limitations do not necessarily apply to problems in which the information matrix possesses structure. In many robotics problems, the interaction of state variables is local; as a result, the *information matrix may be sparse*. #note[Such sparseness does not translate to sparseness of the covariance]
+== Non parametric filtering
+A popular alternative to Gaussian techniques are nonparametric filters.
+Non-parametric filters do not rely on a fixed functional form of the posterior, such as Gaussians. Instead, they approximate posteriors by a finite number of values, each roughly corresponding to a region in state space.
+Some non-parametric Bayes filters rely on a decomposition of the state space, in which each such value corresponds to the cumulative probability of the posterior density in a compact subregion of the state space.
+Others approximate the state space by random samples drawn from the posterior distribution.
+
+In all cases, the number of parameters used to approximate the posterior can be varied.
+#note[The quality of the approximation depends on the number of parameters used to represent the posterior.As the number of parameters goes to infinity, nonparametric techniques tend to converge uniformly to the correct posterior, under specific smoothness assumptions.]
+
+This chapter discusses two nonparametric approaches for approximating posteriors over continuous spaces with finitely many values. 
+- The first decomposes the state space into finitely many regions, and represents the posterior by a *histogram*. A histogram assigns to each region a single cumulative probability; they are best thought of as piecewise constant approximations to a continuous density. 
+- The second technique represents posteriors by finitely many samples. The resulting filter is known as *particle filter* and has become immensely popular in robotics.
+Both types of techniques, histograms and particle filters, do not make strong parametric assumptions on the posterior density. In particular, they are well-suited to represent complex multimodal beliefs. For this reason, they are often the method of choice when a robot has to cope with phases of global uncertainty, and when it faces hard data association problems that yield separate, distinct hypotheses. 
+#note[However, the representational power of these techniques comes at the price of added *computational complexity*.]
+Fortunately, both nonparametric techniques described in this chapter make it possible to adapt the number of parameters to the (suspected) complexity of the posterior:
+- When the posterior is of low complexity (e.g., focused on a single state with a small margin of uncertainty), they use only small numbers of parameters. 
+- For complex posteriors, e.g., posteriors with many modes scattered across the state space, the number of parameters grows larger.
+#definition[Resource adaptive techniques][
+	Techniques that can adapt the number of parameters to represent the posterior online are called *adaptive*. They are called *resource-adaptive* if they can adapt based on the computational resources available for belief computation.]
+Resource-adaptive techniques play an important role in robotics. They enable robots to make decisions in real time, regardless of the computational resources available. Particle filters are often implemented as a resource-adaptive algorithm, by adapting the number of particles online based on the available computational resources.
+=== The Histogram filter (discrete Bayes filter)
+Histogram filters decompose the state space into finitely many regions and represent the cumulative posterior for each region by a single probability value. When applied to finite spaces, such filters are known as discrete Bayes filters; when applied to continuous spaces, they are commonly called histogram filters. We will first describe the discrete Bayes filter and then discuss its use in continuous state spaces.
+
+Discrete Bayes filters apply to problems with finite state spaces, where the random variable $X_t$ can take on finitely many values.
+We already presented Bayes filters in @sec:bayes_filter.
+
+Some of the robotic mapping problems discussed in later chapters also involve discrete random variables.
+For example, occupancy grid mapping algorithms assume that each location in the environment is either occupied or free. The corresponding random variable is binary. It can take on two different values. Thus, finite state spaces play an important role in robotics.
+==== The algorithm
+For the algorithm, we just have to replace the continuous state space $X_t$ by a finite set of values. The belief $"bel"(x_t)$ is then represented by a vector of probabilities, one for each possible value of $x_t$. The update equations are identical to those of the Bayes filter, except that the integrals are replaced by sums over the finite state space.
+The algorithm is therefore identical to the one in @alg:bayes_filter, except that the integrals are replaced by sums. The resulting algorithm is presented in @alg:discrete_bayes_filter.
+#figure(
+	pseudocode-list(line-gap: 1em)[
+		+ *Algorithm Discrete_Bayes_filter*(${p_(k,t-1)}, u_t, z_t$):
+			+ $ overline(p)_(k,t) = sum_i p(X_t = k | u_t, X_(t-1) = x_i) p_(i,t-1)$
+			+ $p_(k,t) = eta p(z_t | X_t = k) overline(p)_(k,t)$
+			+ *return* ${p_(k,t)}$
+	],caption:"The discrete Bayes filter algorithm") <alg:discrete_bayes_filter>
+The variables $x_i$ and $x_k$ denote individual states, of which
+there may only be finitely many. The belief at time $t$ is an assignment of a probability to each state $x_k$, denoted $p_(k,t)$.
+
+Thus, the input to the algorithm is a discrete probability distribution ${p_(k,t-1)}$, along with the most recent control
+$u_t$ and measurement $z_t$. 
+- Line 3 calculates the prediction, the belief for the new state based on the control alone. 
+- This prediction is then updated in line 4, so as to incorporate the measurement.
+The discrete Bayes filter algorithm is popular in many areas of signal processing, where it is often referred to as the *forward pass of a hidden Markov model*, or HMM.
+
+Of particular interest will be the use of discrete Bayes filters as an *approximate inference tool for continuous state spaces*. As noted above, such filters are called histogram filters.
+@fig:histogram-transform shows how a histogram filter represents a random variable and its nonlinear transform. Shown there is the projection of a histogrammed Gaussian through a nonlinear function. The original Gaussian distribution possesses 10 bins. So does the projected probability distribution, but in two of the resulting bins the probability is so close to zero that they cannot be seen in this figure.
+#fig-histogram-transform()<fig:histogram-transform>
+Histogram filters decompose a continuous state space into finitely many bins, or regions:
+$ "dom"(X_t) = x_(1,t) union x_(2,t) union ... union x_(k,t) $
+Here $X_t$ is the familiar random variable describing the state of the robot at time $t$. The function $"dom"( X_t )$ denotes the state space, which is the universe of possible values that $X_t$ might assume.
+
+Each $x_(k,t)$ describes a convex region.
+These regions together form a partitioning of the state space, that is:
+$ forall i,j: i eq.not j => x_(i,t) inter x_(j,t) = emptyset  " and " union_k x_(k,t) = "dom"(X_t) $
+A straightforward decomposition of a continuous state space is a multidimensional grid, where each $x_(k,t)$ is a grid cell. Through the granularity of the decomposition, we can trade off accuracy and computational efficiency.
+#note[Fine-grained decompositions infer smaller approximation errors than coarse ones, but at the expense of increased computational complexity.]
+As we already discussed, the discrete Bayes filter assigns to each region $x_(k,t)$ a probability, $p(x_(k,t))$ . Within each region, the discrete Bayes filter carries no further information on the belief distribution. Thus, the posterior becomes a piecewise constant PDF, which assigns a uniform probability to each state $x_t$ within each region $x_(k,t)$ :
+$ p(x_t) = p_(k,t)/(|x_(k,t)|) $
+where $|x_(k,t)|$ denotes the volume (or area, in 2D) of the region $x_(k,t)$.
+
+If the state space is *truly discrete*, the conditional probabilities $p(x_(k,t) | x_(i,t-1), u_t)$ and $p(z_t | x_(k,t)$ are well-defined, and the algorithm can be implemented as stated.
+
+In continuous state spaces, one is usually given the
+densities $p(x_t | u_t , x_(t-1) )$ and $p(z_t | x_t )$, which are defined for individual states (and not for regions in state space). 
+#note[For cases where each region $x_(k,t)$
+is small and of the same size, these densities are usually approximated by substituting  $x_(k,t)$ with a representative of this region.]
+For example, we might use the mean state in $x_(k,t)$.
+$ hat(x)_(k,t) = |x_(k,t)|^(-1) integral_(x_(k,t)) x_t space d x $
+Then we simply replace
+$
+p(z_t | x_(k,t)) &approx p(z_t | hat(x)_(k,t)) \
+p(x_(k,t) | x_(i,t-1), u_t) &approx eta |x_(k,t)|p(hat(x)_(k,t) | hat(x)_(i,t-1), u_t)
+$
+These approximations are the result of the piecewise uniform interpretation of the discrete Bayes filter that will be discussed later //TODO: mettere ref 
+and a Taylor-approximation analogous to the one used by EKFs.
+=== Binary Bayes Filters with Static State
+Certain problems in robotics are best formulated as estimation problems with *binary state* that does not change over time. Those problems are addressed by the *binary Bayes filter*.
+
+Problems of this type arise if a robot estimates a fixed binary quantity in the environment from a sequence of sensor measurements. For example, a robot might want to know if a door is open or closed, in a context where the door state does not change during sensing.
+Another example of binary Bayes filters with static state are *occupancy grid maps*.
+
+When the state is static, the belief is a function only of the measurements:
+$ "bel"_t(x)= p(x|z_(1:t),u_(1:t))=p(x|z_(1:t)) $
+where the state is chosen from two possible values, denoted by $x$ and $not x$.
+In particular, we have $"bel"_t (not x) = 1 − "bel"_t (x)$. The lack of a time index for the
+state $x$ reflects the fact that the state does not change
+#note[Naturally, binary estimation problems of this type can be tackled using the discrete Bayes filter shown in @alg:discrete_bayes_filter. However, the belief is commonly implemented as a log odds ratio.]
+#definition[Odds][
+The *odds of a state* $x$ is defined as the ratio of the
+probability of this event divided by the probability of its negate
+$ p(x)/p(not x) = p(x)/1-p(x) $
+The *log odds* is the logarithm of the odds:
+$ l(x) := log p(x)/(1-p(x)) $
+]
+#remark[Log odds assume values from $-infinity$ to $infinity$.]
+#remark[The Bayes filter for updating beliefs in log odds representation is computationally elegant. It avoids truncation problems that arise for probabilities close to 0 or 1.]
+#figure(
+	pseudocode-list(line-gap: 1em)[
+		+ *Algorithm Binary_Bayes_filter*($l_(t-1), z_t$):
+			+ $l_t = l_(t-1) + log p(z_t | x)/(1-p(x|z_t)) - log p(x)/(1-p(x))$
+			+ *return* $l_t$
+	],caption:"The binary Bayes filter algorithm"
+)<alg:binary_bayes_filter>
+In @alg:binary_bayes_filter we show the basic update rule.
+This algorithm is additive; in fact, any algorithm that increments and decrements a variable in response to measurements can be interpreted as a Bayes filter in log odds form.
+
+
+We can easily recover the belief $"bel"_t(x)$ using log odds ratio $l_t$:
+$
+"bel"_t (x) = 1- 1/(1 + exp(l_t))
+$
+==== Inverse measurement model
+This binary Bayes filter uses an *inverse measurement model* $p(x | z_t )$, instead of the familiar forward model $p(z_t | x)$. The inverse measurement model specifies a distribution over the (binary) state variable as a function of the measurement $z_t$.
+#note[Inverse models are often used in situations where measurements are more complex than the binary state.] 
+#example[An example of such a situation is the problem of estimating whether or not a door is closed from camera images.
+Here the state is extremely simple, but the space of all measurements is huge.
+It is easier to devise a function that calculates a probability of a door being closed from a camera image, than describing the distribution over all camera images that show a closed door. In other words, it is easier to implement an inverse than a forward sensor model.]
+=== The particle filter
+The *particle filter* is an alternative nonparametric implementation of the Bayes filter. Just like histogram filters, particle filters approximate the posterior by a finite number of parameters. However, they differ in the way these parameters are generated, and in which they populate the state space.
+#note[The key idea
+of the particle filter is to represent the posterior $"bel"(x_t )$ by a set of random state samples drawn from this posterior.]
+#fig-particle-representation()<fig:particle-representation>
+@fig:particle-representation illustrates this idea for a Gaussian. Instead of representing the distribution by a parametric form, which would have been the exponential function that defines the density of a normal distribution, particle filters represent a distribution by a set of samples drawn from this distribution.
+Such a representation is approximate, but it is nonparametric, and therefore can represent a much broader space of distributions than, for example, Gaussians. Another advantage of the sample based representation is its ability to model nonlinear transformations of random variables, as shown in @fig:particle-representation. 
+#definition[particle][
+In particle filters, the samples of a posterior distribution are called *particles* and are denoted
+$ cal(X)_t := x_t^([1]), x_t^([2]), dots, x_t^([M]) $
+Each particle $x_t^([m])$ (with $1 <= m <= M $) is a concrete instantiation of the state at time $t$.
+
+Put differently, a particle is a *hypothesis* as to what the true world state may be at time $t$.
+]
+Here $M$ denotes the number of particles in the particle
+set $cal(X)_t$ . In practice, the number of particles $M$ is often a large number, e.g., $M = 1,000$. In some implementations $M$ is a function of $t$ or other quantities related to the belief $"bel"(x_t )$.
+#note[The intuition behind particle filters is to approximate the belief $"bel"(x_t )$ by the set of particles $cal(X)_t$.
+]
+Ideally, the likelihood for a state hypothesis $x_t$ to be included in the particle set $cal(X)_t$ shall be proportional to its Bayes filter posterior $"bel"(x_t )$:
+$
+x_t^([m]) tilde "bel"(x_t )
+$<eq:particle-filter-approximation>
+#remark[As a consequence of @eq:particle-filter-approximation, the denser a subregion of the state space is populated by samples, the more likely it is that the true state falls into this region.]
+#remark[ @eq:particle-filter-approximation holds only asymptotically for $M arrow.t infinity $ for the standard particle filter algorithm. For finite $M$, particles are drawn from a slightly different distribution.] 
+In practice, this difference is negligible as long as the number of particles is not too small (e.g., $M >= 100$).
+
+Just like all other Bayes filter algorithms discussed thus far, the particle filter algorithm constructs the belief $"bel"(x_t )$ recursively from the belief $"bel"(x_(t-1))$ one time step earlier.
+Since beliefs are represented by sets of particles, this means that particle filters construct the particle set $cal(X)_t$ recursively from the set $cal(X)_(t-1)$.
+#figure(
+	pseudocode-list(line-gap: 1em)[
+	+ *Algorithm Particle_filter*($cal(X)_(t-1), u_t, z_t$)
+		+ $overline(cal(X)_(t))= cal(X)_(t-1) = emptyset$
+		+ *for* $m = 1$ to $M$:
+			+ sample $x_t^([m]) tilde p(x_t|u_t, x_(t-1)^([m]))$
+			+ $w_t^([m]) = p(z_t|x_t^([m]))$
+			+ $overline(cal(X)_(t)) = overline(cal(X)_(t)) + <x_t^([m]), w_t^([m])>$
+		+ *for* $m = 1$ to $M$:
+			+ draw $i$ with probability $prop w_t^([i])$
+			+ add $x_t^([i])$ to $cal(X)_(t)$
+		+ return $cal(X)_(t)$  
+  	],caption:"The particle filter algorithm"
+)<alg:particle_filter>
+In @alg:particle_filter we show the most basic variant of the particle filter algorithm.
+
+The input of this algorithm is the particle set $cal(X)_(t-1)$ , along with the most recent control $u_t$ and the most recent measurement $z_t$ . The algorithm then first constructs a temporary particle set $overline(cal(X)_(t))$ that represented the belief $"bel"(x_t )$. It
+does this by systematically processing each particle $x_(t-1)^([m])$ in the input particle
+set $cal(X)_(t-1)$. Subsequently, it transforms these particles into the set $cal(X)_(t)$, which
+approximates the posterior distribution $"bel"(x_t )$.
+
+In detail:
+1. Line 4 generates a hypothetical state $x_t^([m])$ for time $t$ based on the particle $x_(t-1)^([m])$ and the control $u_t$. The resulting sample is indexed by $m$, indicating that it is generated from the $m$-th particle in $cal(X)_(t-1)$.
+   
+   This step involves sampling from the state transition distribution $p(x_t | u_t, x_(t-1))$. 
+
+   To implement this step, one needs to be able to sample from this distribution. The set of particles obtained after $M$ iterations is the filter’s representation of $"bel"(x_t )$.
+2. Line 5 calculates for each particle $x_t^([m])$ the so-called *importance factor*, denoted $w_t^([m])$. Importance factors are used to incorporate the measurement $z_t$ into the particle set. 
+   
+   The importance, thus, is the probability of the measurement $z_t$ under the particle $x_t^([m])$, given by $w_t^([m]) = p(z_t | x_t^([m]))$. If we interpret $w_t^([m])$ as the weight of a particle, the set of weighted particles represents (in approximation) the Bayes filter posterior $"bel"(x_t )$.
+3. The real “trick” of the particle filter algorithm occurs in lines 8 through 11, where we perform the *resampling* or *importance sampling*. The algorithm draws with replacement $M$ particles from the temporary set $overline(cal(X)_(t))$. The probability of drawing each particle is given by its importance weight. Resampling transforms a particle set of $M$ particles into another particle set of the same size.
+	
+	By incorporating the importance weights into the resampling process, the distribution of the particles change, whereas before the resampling step, they were distributed according to $overline("bel")(x_t)$, after the resampling they are distributed (approximately) according to the posterior $"bel"(x_t)=eta p(z_t|x_t^([m]))overline("bel")(x_t)$. In fact, the resulting sample set usually possesses many duplicates, since particles are drawn with replacement. More important are the particles not contained in $cal(X)_t$, those tend to be the particles with lower importance weights.
+#remark[The resampling step has the important function to force particles back to the posterior $"bel"(x_t)$.]
+#remark[The resampling step is a probabilistic implementation of the Darwinian idea of survival of the fittest: It refocuses the particle set to regions in state space with high posterior probability. By doing so, it focuses the computational resources of the filter algorithm to regions in the state space where they matter the most]
